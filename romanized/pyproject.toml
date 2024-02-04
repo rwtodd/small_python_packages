@@ -1,0 +1,27 @@
+# rwt.romanized
+
+[build-system]
+requires = ["setuptools >= 69.0.3"]  # Specify build backend dependencies
+build-backend = "setuptools.build_meta"  # Use setuptools as the build backend
+
+[project]
+name = "rwt_romanized"  # Your project name on PyPI
+version = "1.0"  # Your project version
+description = "Converts romanized Greek and Hebrew to unicode."  # Short project description
+authors =  [ { name = "Richard Todd" } ]  # List of authors
+requires-python = ">=3.12"  # Minimum Python version required
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+] 
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["rwt"]
+exclude = ["tests*"]
