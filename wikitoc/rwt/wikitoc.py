@@ -78,11 +78,18 @@ class _WikiBook:
     def __init__(self, author: (str, str), title: (str,str), toc_page:str, date: str):
         # (str,str) == (display, short)
         self._author, self._title, self._date = author, title, date
+        self._toc_page_name = toc_page
         self._toc_page = _make_category_page(author[1], toc_page) 
         self._category_mark = '[[' + self._toc_page.make_basic_link()[3:]
         self._nav = 'Generic WikiBook Nav'
         self._pages = []
         self._toc_text = []
+
+    def override_category(self,c):
+        """Override the default category handling, since this book won't be in its
+        own category, and the TOC will be a regular page"""
+        self._category_mark = f'[[Category:{c}]]'
+        self._toc_page = _WikiPage(self._author[1], 'Table of [Contents]', page=self._toc_page_name)
 
     def add_page(self, display, short=None, page=None):
         wp = _WikiPage(self._title[1], display, short, page)
@@ -168,6 +175,8 @@ def _parse(root):
     tag_value = _get_disp_short_page(root.find('date'))
     date = tag_value[0]
     wb = _WikiBook(author, title, book_page, date)
+    if cat := root.attrib.get('category',None):  # category override when the TOC isn't a category
+        wb.override_category(cat)
 
     # now go through the chapters...
     chapters = root.find('chapters')
