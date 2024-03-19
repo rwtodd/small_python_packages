@@ -3,133 +3,233 @@ generating the wikitext pages for the book."""
 
 __all__ = ['parse_file', 'parse_string', 'generate_nav_page']
 
-import xml.etree.ElementTree as ET
-import re
+from typing import List
 
-_brackets_re = re.compile(r'[][]')
-_in_brackets_re = re.compile(r'\[(.*?)\]')
-def _split_long_short(text):
-    """Remove any brackets in `text`, and use the words inside the brackets as
-    the short version of the string.  If there were no brackets, the short and
-    long versions are the same."""
-    if (m := _in_brackets_re.search(text)):
-        return (_brackets_re.sub('',text), m.group(1))
-    return (text, text)
+_UNK = "UNKNOWN"
 
-class _WikiPage:
-    _listmarks_re = re.compile(r'^[*#]++\s*+')
-    _starts_an_the_re = re.compile(r'^(?:An?|The)\s*+', re.I)
-    def __init__(self, parens, display, short=None, page=None):
-        """build a page description from the display text, the
-        optional short and page names, and the parenthetical that
-        goes on the page name"""
+class RawText:
+    """Raw text for the TOC page, may be mixed freely with `Page`s."""
+    def __init__(self, text: str):
+        self.text = text
+    def make_toc_string(self):
+        return self.text
 
-        # Record and listmarks on the display, or default to '* '
-        if (m := _WikiPage._listmarks_re.match(display)):
-            self._listmarks = m.group(0)
-            display = display[m.end():]
+class Page:
+    def __init__(self, book: 'Book', url: str):
+        self._book = book
+        self._url = url
+        self._next_page = None
+        self._prev_page = None
+        self._short_name = None
+        self._display_name = None
+        self._is_category = None
+        self._toc_listmarkers = None
+
+    @property
+    def book(self) -> 'Book':
+        return self._book
+    
+    @property
+    def url(self) -> str:
+        return self._url
+    
+    def _set_displayname(self, dn:str):
+        self._display_name = dn
+    def _get_displayname(self) -> str:
+        return self._display_name or self._url
+    display_name = property(_get_displayname, _set_displayname, None, "The 'display name' for the page.")
+
+    def _set_next_page(self, pg: 'Page'):
+        self._next_page = pg
+    @property
+    def next_page(self) -> 'Page':
+        return self._next_page
+    
+    def _set_prev_page(self, pg: 'Page'):
+        self._prev_page = pg
+    @property
+    def prev_page(self) -> 'Page':
+        return self._prev_page
+
+    def _set_short_name(self, sn: str):
+        self._short_name = sn
+    def _get_short_name(self) -> str:
+        candidate = self._short_name or self.display_name
+        if len(candidate) > 20:
+            if candidate.startswith('A '):
+                candidate = candidate[2:]
+            elif candidate.startswith('An '):
+                candidate = candidate[3:]
+            elif candidate.startswith('The '):
+                candidate = candidate[4:]
+            if len(candidate) > 20:
+                cadidate = candidate[:18] + '&hellip;'
+        return candidate
+    short_name = property(_get_short_name,_set_short_name,None,"The 'short name' for this page")
+
+    def _set_toc_listmarkers(self, lm: str):
+        self._toc_listmarkers = lm
+    def _get_toc_listmarkers(self) -> str:
+        return self._toc_listmarkers or "* "
+    toc_listmarkers = property(_get_toc_listmarkers, _set_toc_listmarkers, None, "The list markers that precede the page in the TOC listing")
+
+    def _get_is_category(self) -> bool:
+        return self._is_category or False
+    def _set_is_category(self, ic: bool):
+        self._is_category = ic
+    is_category = property(_get_is_category, _set_is_category, None, "Is the page representing a category?")
+
+    @property
+    def file_name(self) -> str:
+        return f"{self.url}.wikitext".replace(' ', '_')
+    
+    def make_link(self, text: str = None) -> str:
+        """if text is None, then no link text is given in the link,
+        and mediawiki will display the page name as the link text."""
+        if text is None:
+            ending = ''
         else:
-            self._listmarks = '* '
+            ending = f'|{text}'
+        cat = ":Category:" if self.is_category else ''
+        return f'[[{cat}{self.url}{ending}]]'
 
-        # The short name is limited to 20 chars... if it's not given, we check for a bracketed section
-        # of the display line
-        if not short:
-            display, short = _split_long_short(display)
-            # now, try to whittle the short name to 20 chars...
-            if len(short) > 20:
-                short = _WikiPage._starts_an_the_re.sub('',short)
-                if len(short) > 20:
-                   short = f'{short[:18]}&hellip;'
-        self._short, self._display = short, display
-
-        # The page name, unless one is given, is the display name
-        page = page or self._display
-        # The link is the page name plus any given parenthetical
-        if parens:
-            self._link = f'{page} ({parens})'
-        else:
-            self._link = page
-
-    def make_display_link(self):
-        return f'{self._listmarks}[[{self._link}|{self._display}]]' 
-
-    def make_short_link(self):
-        return f'[[{self._link}|{self._short}]]' 
-
-    def make_page_link(self,text=None):
-        text = text or self._display
-        return f'[[{self._link}|{text}]]' 
-
-    def make_basic_link(self):
-        """Make a link with no custom text"""
-        return f'[[{self._link}]]' 
-
-    def filename(self):
-        """Generate a filename if we write this to disk"""
-        return self._link.replace(' ','_') + '.wikitext'
-
-# to make a category page:
-#   WikiPage('Author', 'Table of [Contents]', page=':Category:Name of Book')
-def _make_category_page(author, cat_page):
-    """Create a WikiPage for the book category"""
-    return _WikiPage(author, 'Table of [Contents]', page=f':Category:{cat_page}')
-
-class _WikiBook:
-    def __init__(self, author: (str, str), title: (str,str), toc_page:str, date: str):
-        # (str,str) == (display, short)
-        self._author, self._title, self._date = author, title, date
-        self._toc_page_name = toc_page
-        self._toc_page = _make_category_page(author[1], toc_page) 
-        self._category_mark = '[[' + self._toc_page.make_basic_link()[3:]
-        self._nav = 'Generic WikiBook Nav'
-        self._pages = []
-        self._toc_text = []
-
-    def override_category(self,c):
-        """Override the default category handling, since this book won't be in its
-        own category, and the TOC will be a regular page"""
-        self._category_mark = f'[[Category:{c}]]'
-        self._toc_page = _WikiPage(self._author[1], 'Table of [Contents]', page=self._toc_page_name)
-
-    def add_page(self, display, short=None, page=None):
-        wp = _WikiPage(self._title[1], display, short, page)
-        self._toc_text.append(wp.make_display_link())
-        self._pages.append(wp)
-
-    def add_raw_text(self, text: str):
-        self._toc_text.append(text)
-
-    def generate_toc(self):
-        return f"""; Title: {self._title[0]}
-; Author: {self._author[0]}
-; Date: {self._date}
-
-[[File:{self._title[1].replace(' ','_')}_CoverImage.jpg|thumb|Cover Image]]
-== Contents ==
-{"\n".join(self._toc_text)}
-
-[[Category:WikiBooks]]"""
-
-    def page_or_toc(self, n):
-        """Either find the page, or give the toc page if the number is out of range"""
-        if n < 0 or n >= len(self._pages):
-            return self._toc_page
-        return self._pages[n]
-
-    def __len__(self): return len(self._pages)
-
-    def generate_page_template(self, n):
-        """Generate a page wrapper for page number `n`"""
-        prv, nxt = self.page_or_toc(n-1), self.page_or_toc(n+1)
-        return f"""{{{{{self._nav}
-| 1 = {self._title[0]}
-| 2 = {self._toc_page.make_page_link()}
-| 3 = {prv.make_short_link()}
-| 4 = {nxt.make_short_link()}
+    def make_display_link(self) -> str:
+        return self.make_link(self.display_name)
+    
+    def make_short_link(self) -> str:
+        return self.make_link(self.short_name)
+    
+    def make_category_marker(self) -> str:
+        if not self.is_category:
+            raise RuntimeError('Category marker requested for non-category!')
+        return f'[[Category:{self.url}]]'
+    
+    def make_toc_string(self) -> str:
+        return f"{self.toc_listmarkers}{self.make_display_link()}"
+    
+    def make_page_template(self) -> str:
+        book = self.book
+        return f"""{{{{{book.nav_template}
+|1 = {book.nav_title}
+|2 = {book.TOC.make_display_link()}
+|3 = {(self.prev_page or book.TOC).make_short_link()}
+|4 = {(self.next_page or book.TOC).make_short_link()}
 }}}}
 
-&rarr; {nxt.make_page_link()} &rarr;
-{self._category_mark}"""
+&rarr; {(self.next_page or book.TOC).make_display_link()} &rarr;
+{book.book_category_mark}"""
+
+class TableOfContents(Page):
+    def __init__(self, book: 'Book', url_name: str, parent_cat: str):
+        super().__init__(book, url_name)
+        self.short_name = "Contents"
+        self.display_name = "Table of Contents"
+        self.toc_listmarkers = ''
+        pcat_page = Page(book, parent_cat)
+        pcat_page.is_category = True
+        self._set_parent_category(pcat_page)
+        self._entries = []
+    
+    def _set_parent_category(self, cat: Page):
+        self._parent_category = cat
+    @property
+    def parent_category(self) -> Page:
+        return self._parent_category
+    
+    def make_page_template(self) -> str:
+        book = self.book
+        lines = []
+        lines.append(f"; Title: {book.title}")
+        lines.append(f"; Author: {book.author}")
+        lines.append(f"; Date: {book.pub_date}")
+        lines.append('')
+        lines.append(f"[[File:{book.short_title} CoverImage.jpg|thumb|Cover Image]]".replace(' ','_'))
+        lines.append("== Contents ==")
+        lines.extend(e.make_toc_string() for e in self._entries)
+        lines.append('')
+        lines.append(self.parent_category.make_category_marker())
+        return "\n".join(lines)
+    
+    def _add_entry(self, e) -> None:
+        """e is anything that supports a make_toc_string() method"""
+        self._entries.append(e)
+
+class Book:
+    def __init__(self, book_url: str, toc_cat: str):
+        self._toc = TableOfContents(self, book_url, toc_cat)
+        cmark = Page(self, book_url)
+        cmark.is_category = True
+        self._category_mark = cmark.make_category_marker()
+        self._nav_template = None
+        self._pages : List[Page] = []
+        self._unique_urls = set([book_url])
+        self._author = None
+        self._pub_date = None
+        self._title = None
+        self._short_title = None
+        self._nav_title = None
+    @property
+    def TOC(self) -> TableOfContents:
+        return self._toc
+    
+    @property
+    def book_category_mark(self) -> str:
+        return self._category_mark
+
+    def _set_nav_template(self, nt: str):
+        self._nav_template = nt
+    def _get_nav_template(self) -> str:
+        return self._nav_template or 'Generic WikiBook Nav'
+    nav_template = property(_get_nav_template,_set_nav_template,None,"The navigation template the book pages will use")
+    
+    def add_page(self, p: Page):
+        if p.url in self._unique_urls:
+            raise RuntimeError('Adding the same url page twice! ' + p.url)
+        self._unique_urls.add(p.url)
+        
+        if len(self._pages) > 0:
+            lastp = self._pages[-1]
+            lastp._set_next_page(p)
+            p._set_prev_page(lastp)        
+        self._pages.append(p)
+        self.TOC._add_entry(p)
+
+    def add_raw_text(self, text: str):
+        self.TOC._add_entry(RawText(text))
+    
+    @property
+    def pages(self) -> List[Page]:
+        return self._pages # TODO: does making a copy here make sense?
+    
+    def _set_pub_date(self, date: str):
+        self._pub_date = date
+    def _get_pub_date(self) -> str:
+        return self._pub_date or _UNK
+    pub_date = property(_get_pub_date, _set_pub_date, None, "The date of publication")
+
+    def _set_title(self, title: str):
+        self._title = title
+    def _get_title(self) -> str:
+        return self._title or _UNK
+    title = property(_get_title, _set_title, None, "The title of the book")
+
+    def _set_nav_title(self, nav_title: str):
+        self._nav_title = nav_title
+    def _get_nav_title(self) -> str:
+        return self._nav_title or self.title
+    nav_title = property(_get_nav_title, _set_nav_title, None, "The navigation-page title of the book")
+
+    def _set_short_title(self, short_title: str):
+        self._short_title = short_title
+    def _get_short_title(self) -> str:
+        return self._short_title or self.title
+    short_title = property(_get_short_title, _set_short_title, None, "The short title of the book (often used in page urls)")
+
+    def _set_author(self, author: str):
+        self._author = author
+    def _get_author(self) -> str:
+        return self._author or _UNK
+    author = property(_get_author, _set_author, None, "The author of the book")
 
 def generate_nav_page():
     """args: 1 = Title, 2 = ToC Link, 3 = prev link, 4 = next link"""
@@ -145,62 +245,4 @@ def generate_nav_page():
 | style="text-align:right" | {{{4}}}&nbsp;&rarr;
 |}
 '''
-
-def _get_disp_short_page(element):
-    """Get the display, short, and page fromt an element"""
-    if element is None: return ('Unknown!', 'Unknown!', 'Unknown!')
-    disp = element.text
-    short = element.attrib.get('short',None)
-    page = element.attrib.get('page',None)
-    return (disp,short,page)
-
-def _parse_disp_short_page(element):
-    """Get the display, short, and page... providing defaults if short or page are None"""
-    d,s,p = _get_disp_short_page(element)
-    if s is None:
-        d, s = _split_long_short(d)
-    if p is None:
-        p = d
-    return (d,s,p)
-
-def _parse(root):
-    if root.tag != 'book': raise RuntimeError(f"Bad root <{root.tag}>! Should be <book>")
-
-    # dig out the author, title, date, and create the _WikiBook
-    tag_value = _parse_disp_short_page(root.find('author'))
-    author = (tag_value[0], tag_value[1]) 
-    tag_value = _parse_disp_short_page(root.find('title'))
-    title = (tag_value[0], tag_value[1]) 
-    book_page = tag_value[2]
-    tag_value = _get_disp_short_page(root.find('date'))
-    date = tag_value[0]
-    wb = _WikiBook(author, title, book_page, date)
-    if cat := root.attrib.get('category',None):  # category override when the TOC isn't a category
-        wb.override_category(cat)
-
-    # now go through the chapters...
-    chapters = root.find('chapters')
-    if chapters is None: raise RuntimeError("Book with no chapters!")
-    for child in chapters:
-        match child.tag:
-            case 'c':
-                dsp = _get_disp_short_page(child)
-                wb.add_page(*dsp)
-            case 'raw': 
-                wb.add_raw_text(child.text)
-            case unknown:
-                raise RuntimeError(f"Chapter with tag <{unknown}>! Must be <c> or <raw>!")
-
-    return wb
-
-def parse_file(fname: str) -> _WikiBook:
-    """Read a wikitoc xml file, and return the WikiBook"""
-    tree = ET.parse(fname) 
-    root = tree.getroot()
-    return _parse(root)
-
-def parse_string(s: str) -> _WikiBook:
-    """Read a wikitoc xml string, and return the WikiBook"""
-    root = ET.fromstring(s)
-    return _parse(root)
 
