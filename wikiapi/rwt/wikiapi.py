@@ -1,12 +1,16 @@
 """A module to facilitate uploading files and articles to a mediawiki.
 It depends on the `requests` module."""
 
-__all__ = [ 'WikiSession' ]
+__all__ = [ 'WikiSession', 'image_extensions' ]
 
-import requests
-import os
+import requests as _requests
+import os as _os
 
-_IMAGE_EXTS = { '.png', '.gif', '.jpg', '.jpeg' }
+_IMAGE_EXTS = { '.png', '.gif', '.jpg', '.jpeg', '.svg' }
+
+def image_extensions():
+    """Get a set of extensions that indicate File:xxx uploads to the wiki"""
+    return _IMAGE_EXTS.copy()
 
 class WikiSession:
     def __enter__(self):
@@ -22,7 +26,7 @@ class WikiSession:
         It should be the api.php address."""
         self._url = url
         self._logged_in = False
-        self._session = requests.Session()
+        self._session = _requests.Session()
 
     def login(self, uname, pw):
         """Log into the mediawiki with credentials `uname` and `pw`, 
@@ -65,8 +69,8 @@ class WikiSession:
         if not self._logged_in:
             raise RuntimeError("Not logged in to the mediawiki.")
 
-        basename = os.path.basename(filename)
-        base, ext = os.path.splitext(basename)
+        basename = _os.path.basename(filename)
+        base, ext = _os.path.splitext(basename)
         if ext.lower() in _IMAGE_EXTS:
             raise RuntimeError(f"Sending image file <{filename}> as an article!")
 
@@ -93,8 +97,8 @@ class WikiSession:
         # https://www.mediawiki.org/wiki/API:Upload
         if not self._logged_in:
             raise RuntimeError("Not logged in to the mediawiki.")
-        basename = os.path.basename(filename)
-        base, ext = os.path.splitext(basename)
+        basename = _os.path.basename(filename)
+        base, ext = _os.path.splitext(basename)
         if ext.lower() not in _IMAGE_EXTS:
             raise RuntimeError(f"Trying to upload a non-image file <{filename}>!")
         if title is None:
