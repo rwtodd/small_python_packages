@@ -111,7 +111,7 @@ class WikiSession:
             response = self._session.post(url=self._url, files=file, data=params)
             return  response
 
-    def fetch_wikitext(self, title):
+    def fetch_wikitext(self, title) -> tuple[_requests.Response, str]:
         """Fetch the wikitext of an article. Returns the full json response, as well as the
         wikitext (even though the wikitext is embedded in the response)"""
         # https://www.mediawiki.org/wiki/API:Get_the_contents_of_a_page
@@ -125,10 +125,10 @@ class WikiSession:
         }
         response = self._session.get(url=self._url, params=params)
         data = response.json()
-        wikitext = data['parse']['wikitext']['*']
+        wikitext: str = data['parse']['wikitext']['*']
         return (response, wikitext)
 
-    def fetch_html(self, title):
+    def fetch_html(self, title) -> tuple[_requests.Response, str]:
         """Fetch the html of an article. Returns the full json response, as well as the
         wikitext (even though the wikitext is embedded in the response)"""
         # https://www.mediawiki.org/wiki/API:Get_the_contents_of_a_page
@@ -142,6 +142,6 @@ class WikiSession:
         }
         response = self._session.get(url=self._url, params=params)
         data = response.json()
-        html = data['parse']['text']['*']
+        html: str = data['parse']['text']['*']
         return (response, html)
 

@@ -1,9 +1,9 @@
 """A module to parse descriptions of wikibooks and facilitate
 generating the wikitext pages for the book."""
 
-__all__ = ['parse_file', 'parse_string', 'generate_nav_page']
+__all__ = ['Book', 'Page', 'generate_nav_page']
 
-from typing import List
+from typing import List as _List
 
 _UNK = "UNKNOWN"
 
@@ -161,7 +161,7 @@ class Book:
         cmark.is_category = True
         self._category_mark = cmark.make_category_marker()
         self._nav_template = None
-        self._pages : List[Page] = []
+        self._pages : _List[Page] = []
         self._unique_urls = set([book_url])
         self._author = None
         self._pub_date = None
@@ -198,7 +198,7 @@ class Book:
         self.TOC._add_entry(RawText(text))
     
     @property
-    def pages(self) -> List[Page]:
+    def pages(self) -> _List[Page]:
         return self._pages # TODO: does making a copy here make sense?
     
     def _set_pub_date(self, date: str):
@@ -231,7 +231,7 @@ class Book:
         return self._author or _UNK
     author = property(_get_author, _set_author, None, "The author of the book")
 
-def generate_nav_page():
+def generate_nav_page() -> str:
     """args: 1 = Title, 2 = ToC Link, 3 = prev link, 4 = next link"""
     return '''Nav page is Template:Generic_WikiBook_Nav
 
