@@ -3,6 +3,8 @@ import itertools as _itertools
 from collections import defaultdict as _defaultdict
 from typing import Iterable as _iterable, List as _list
 
+__all__ = ['Cipher']
+
 _named : dict[str,_iterable[int]] = {
   'alw': 
     [1, 20, 13, 6, 25, 18, 11, 4, 23, 16, 9, 2, 21, 14, 7, 26, 19, 12, 5, 24, 17, 10, 3, 22, 15, 8],
