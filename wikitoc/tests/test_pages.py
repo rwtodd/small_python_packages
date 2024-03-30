@@ -25,3 +25,18 @@ class Test1(unittest.TestCase):
         self.assertEqual("* [[Second Chapter, The (Furthest Places)|The Second Chapter]]", p2.make_toc_string())
         self.assertEqual("[[Category:Furthest Places, The (M. Rosas)]]", b.book_category_mark)
         self.assertEqual("[[Category:Love Novels]]", b.TOC.parent_category.make_category_marker())
+    
+    def test_short_names(self):
+        """make sure shortening works"""
+        b = wt.Book("Furthest Places, The (M. Rosas)","Love Novels");
+        p1 = wt.Page(b,f"The First Chapter of them All ({b.short_title})")
+        p1.display_name = "The First Chapter of them All"
+        self.assertEqual("First Chapter of t&hellip;", p1.short_name)
+        p2 = wt.Page(b,f"The First Chapter ({b.short_title})")
+        p2.display_name = "The First Chapter"
+        self.assertEqual("The First Chapter", p2.short_name)
+        p3 = wt.Page(b,f"The First Chapter One({b.short_title})")
+        p3.display_name = "The First Chapter One"
+        self.assertEqual("First Chapter One", p3.short_name)
+
+

@@ -63,7 +63,7 @@ class Page:
             elif candidate.startswith('The '):
                 candidate = candidate[4:]
             if len(candidate) > 20:
-                cadidate = candidate[:18] + '&hellip;'
+                candidate = candidate[:18] + '&hellip;'
         return candidate
     short_name = property(_get_short_name,_set_short_name,None,"The 'short name' for this page")
 
