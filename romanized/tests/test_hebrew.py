@@ -20,6 +20,10 @@ class TestHebrew(unittest.TestCase):
         self.assertEqual(result, 'אן בנם')
         result = hebrew('ANf BNiMf')
         self.assertEqual(result, 'אן בנם') 
+        # test that ';' doesn't trigger a final Peh here...
+        result1 = hebrew('Th*1Pi;A3R3Th')
+        result2 = hebrew('Th*1P;A3R3Th')
+        self.assertEqual(result1, result2)
 
     def test_niqqud(self):
         result = hebrew('B3AM')
