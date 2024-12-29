@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"  # Use setuptools as the build backend
 
 [project]
 name = "rwt_wikiapi"  # Your project name on PyPI
-version = "1.2"  # Your project version
+version = "1.3"  # Your project version
 description = "Module to help upload files and articles to mediawiki"  # Short project description
 authors =  [ { name = "Richard Todd" } ]  # List of authors
 requires-python = ">=3.12"  # Minimum Python version required
@@ -24,4 +24,4 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["rwt"]
-exclude = ["tests*"]
+exclude = ["tests*", "progs*"]

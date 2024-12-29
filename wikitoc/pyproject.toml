@@ -24,4 +24,4 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["rwt"]
-exclude = ["tests*"]
+exclude = ["tests*","progs*"]

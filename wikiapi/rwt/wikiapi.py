@@ -6,7 +6,7 @@ __all__ = [ 'WikiSession', 'image_extensions' ]
 import requests as _requests
 import os as _os
 
-_IMAGE_EXTS = { '.png', '.gif', '.jpg', '.jpeg', '.svg' }
+_IMAGE_EXTS = { '.png', '.gif', '.jpg', '.jpeg', '.svg', '.webp' }
 
 def image_extensions():
     """Get a set of extensions that indicate File:xxx uploads to the wiki"""
