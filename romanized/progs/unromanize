@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+# requires the rwt_romanized package from the small_python_packages repository.
+from rwt.romanized import greek,hebrew
+
+def to_entity(ch):
+    numeric = ord(ch)
+    if numeric < 128: return ch
+    return ch if numeric < 128 else f'&#x{numeric:04x};'
+
+def process_hebrew(line):
+    unicode = hebrew(line)
+    print(unicode)
+    entities = ''.join(to_entity(ch) for ch in unicode)
+    print('{{hebrew text|',entities,'}}', sep='')
+
+def process_greek(line):
+    unicode = greek(line)
+    print(unicode)
+    entities = ''.join(to_entity(ch) for ch in unicode)
+    print(entities)
+
+if __name__ == "__main__":
+    import argparse
+    import fileinput
+    parser = argparse.ArgumentParser(description="Convert hebrew or greek romanized text to Unicode.")
+    parser.add_argument('-l', '--lang', dest='language', default='heb', choices=['heb','grk'], help="Choose the language (default heb)")
+    parser.add_argument('filenames', metavar='filename', type=str, nargs='*')
+    args = parser.parse_args()
+
+    match args.language:
+        case 'heb':
+            processor = process_hebrew
+        case 'grk':
+            processor = process_greek
+
+    with fileinput.input(args.filenames) as f:
+        for line in f:
+            processor(line.rstrip())
