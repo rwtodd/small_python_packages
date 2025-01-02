@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"  # Use setuptools as the build backend
 
 [project]
 name = "rwt_wikitoc"  # Your project name on PyPI
-version = "1.4"  # Your project version
+version = "1.6"  # Your project version
 description = "Reads in descriptions of wikibook pages"  # Short project description
 authors =  [ { name = "Richard Todd" } ]  # List of authors
 requires-python = ">=3.12"  # Minimum Python version required

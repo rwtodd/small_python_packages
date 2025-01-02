@@ -18,6 +18,7 @@ def split_list_marks(s: str) -> Tuple[str|None,str]:
 
 def _parse(root: ET.Element) -> wikitoc.Book:
     if root.tag != 'book': raise RuntimeError(f"Bad root <{root.tag}>! Should be <book>")
+    known_attrs = set(['url','short'])
     toc_cat = root.get('tocCategory','Wikibooks')
     title_element = root.find('title')
     url = title_element.get('url',title_element.text)
@@ -57,6 +58,9 @@ def _parse(root: ET.Element) -> wikitoc.Book:
                 if pgshort: pg.short_name = pgshort
                 if pgtext: pg.display_name = pgtext
                 if pglistmark: pg.toc_listmarkers = pglistmark
+                # if there are any attributes we don't know, add them as extra data...
+                for k in (child.attrib.keys() - known_attrs):
+                    pg.attributes[k] = (child.get(k) or "NO DATA")
                 wb.add_page(pg)
             case 'raw': 
                 wb.add_raw_text(child.text)

@@ -24,6 +24,16 @@ class Page:
         self._display_name = None
         self._is_category = None
         self._toc_listmarkers = None
+        self._attributes = None
+
+    @property
+    def attributes(self) -> dict[str,str]:
+        """Any extra data associtated with the page"""
+        adict = self._attributes
+        if adict is None:
+            adict = dict()
+            self._attributes = adict
+        return adict
 
     @property
     def book(self) -> 'Book':
@@ -107,16 +117,31 @@ class Page:
     def make_toc_string(self) -> str:
         return f"{self.toc_listmarkers}{self.make_display_link()}"
     
+    def _page_contents(self) -> str:
+        """Get the contents of the page for the template. This is useful to override in child
+        classes, but in the base Page class it returns an empty string."""
+        return ""
+    
+    def _page_postscript(self) -> str:
+        """Get any contents you want to place _after_ the default template.  This is useful to override
+        in child classes, but in the base Page class it returns an empty string."""
+        return ""
+    
     def make_page_template(self) -> str:
         book = self.book
+        contents = self._page_contents().strip()
+        postlude = self._page_postscript().strip()
         return f"""{{{{{book.nav_template}
 |1 = {book.nav_title}
 |2 = {book.TOC.make_display_link()}
 |3 = {(self.prev_page or book.TOC).make_short_link()}
 |4 = {(self.next_page or book.TOC).make_short_link()}
 }}}}
+{contents}
 
 &rarr; {(self.next_page or book.TOC).make_display_link()} &rarr;
+
+{postlude}
 {book.book_category_mark}"""
 
 class TableOfContents(Page):
