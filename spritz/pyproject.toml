@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools >= 74.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwt_spritz"  # Your project name on PyPI
+version = "1.0"  # Your project version
+description = "provides spritz cipher routines"
+authors =  [ { name = "Richard Todd" } ]  # List of authors
+requires-python = ">=3.13"  # Minimum Python version required
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+] 
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+include-package-data = false
+package-dir = { "" = "." }
+# packages = ["rwt"]
+
+[tool.setuptools.packages.find]
+include = ["rwt"]
+exclude = ["tests*","progs*"]
+
+[[tool.setuptools.ext-modules]]
+name = "rwt.spritz._internal"
+sources = ["rwt/spritz/_internal.c"]
+py-limited-api = true
