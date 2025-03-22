@@ -169,6 +169,20 @@ spritz_drip (PyObject *self)
 }
 
 PyObject *
+spritz_skip (PyObject *self, PyObject *num)
+{
+  SpritzState* const s = (SpritzState*)self;
+  long number = PyLong_AsLong(num);
+  if(number > 0) {
+     if (s->a > 0) shuffle (s);
+     while (number-- > 0) drip_one(s);    
+  }
+
+  Py_INCREF(Py_None);  // Increment refcount since we're returning it
+  return Py_None;
+}
+
+PyObject *
 spritz_drip_many (PyObject *self, PyObject *buffer)
 {
   SpritzState* const s = (SpritzState*)self;
@@ -250,8 +264,9 @@ static PyMethodDef spritzkernel_methods[] = {
   {"absorb_stop", (PyCFunction)spritz_absorb_stop, METH_NOARGS, "absorb a special 'stop' dividing token"},
   {"drip_byte", (PyCFunction)spritz_drip, METH_NOARGS, "extract a single byte from the kernel"},
   {"drip", (PyCFunction)spritz_drip_many, METH_O, "extract bytes from the kernel into the buffer"},
-  {"xor", (PyCFunction)spritz_xor_many, METH_O, "extract bytes from the kernel and xor them into the buffer"},
   {"reset", (PyCFunction)spritz_reset, METH_NOARGS, "reset the kernel to a fresh state"},
+  {"skip", (PyCFunction)spritz_skip, METH_O, "skip a certain number of drip'ed outputs"},
+  {"xor", (PyCFunction)spritz_xor_many, METH_O, "extract bytes from the kernel and xor them into the buffer"},
   {NULL, NULL, 0, NULL}  // Sentinel
 };
 
