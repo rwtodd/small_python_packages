@@ -20,10 +20,11 @@ Repository = "https://github.com/rwtodd/small_python_packages.git"
 [tool.setuptools]
 include-package-data = false
 package-dir = { "" = "." }
-# packages = ["rwt"]
+# packages = [ "rwt.spritz" ]
 
 [tool.setuptools.packages.find]
-include = ["rwt"]
+where = ["."]
+include = ["rwt.spritz"]
 exclude = ["tests*","progs*"]
 
 [[tool.setuptools.ext-modules]]

@@ -110,7 +110,7 @@ absorb_nibble (SpritzState *const s, uint8_t x)
   s->a++;
 }
 
-inline void
+static inline void
 spritz_absorb (SpritzState *const s, const uint8_t b)
 {
   absorb_nibble (s, b & 0x0f);
