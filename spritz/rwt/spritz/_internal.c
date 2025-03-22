@@ -175,8 +175,9 @@ spritz_drip_many (PyObject *self, PyObject *buffer)
   Py_buffer pybuf;
 
   // Get the buffer
-  if (PyObject_GetBuffer(buffer, &pybuf, PyBUF_SIMPLE) != 0) {
-      return NULL;  // Error set by PyObject_GetBuffer
+  if (PyObject_GetBuffer(buffer, &pybuf, PyBUF_WRITABLE) < 0) {
+    PyErr_SetString(PyExc_TypeError, "buffer must be writable");
+    return NULL;
   }
   
   uint8_t * bytes = (uint8_t *)pybuf.buf;
@@ -201,8 +202,9 @@ spritz_xor_many (PyObject *self, PyObject *buffer)
   Py_buffer pybuf;
 
   // Get the buffer
-  if (PyObject_GetBuffer(buffer, &pybuf, PyBUF_SIMPLE) != 0) {
-      return NULL;  // Error set by PyObject_GetBuffer
+  if (PyObject_GetBuffer(buffer, &pybuf, PyBUF_WRITABLE) < 0) {
+    PyErr_SetString(PyExc_TypeError, "buffer must be writable");
+    return NULL;
   }
   
   uint8_t * bytes = (uint8_t *)pybuf.buf;
