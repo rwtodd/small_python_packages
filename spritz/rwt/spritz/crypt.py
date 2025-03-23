@@ -130,11 +130,12 @@ def encrypt(passw: str, orig_fname: str, infile: BinaryIO, outfile: BinaryIO) ->
       outfile.write(tmp)
     _do_crypt(infile, outfile, kernel)
 
-def decrypt(passw: str, infile: BinaryIO, outfile: BinaryIO|None = None) -> None:
+def decrypt(passw: str, infile: BinaryIO, outfile: BinaryIO|None = None) -> str:
     """Decrypt `infile` with spritz, password `passw`. Write the result
     to `outfile`.  `outfile` can be an open binary file, or None.  When it
     is None, this function will open a file with the name stored inside the
-    encrypted file.  If no name was stored the name will be 'unknown_name'."""
+    encrypted file.  If no name was stored the name will be 'unknown_name'.
+    The file stored as the original filename in the encrypted input is returned."""
     header = _Header()
     header.read(infile, passw)
     kernel = _internal.SpritzKernel()
@@ -156,4 +157,26 @@ def decrypt(passw: str, infile: BinaryIO, outfile: BinaryIO|None = None) -> None
             _do_crypt(infile, new_outfile, kernel)
     else:
         _do_crypt(infile, outfile, kernel)
+    return orig_fname
+
+def check(passw: str, infile: BinaryIO) -> bool:
+    """Check if the password appears to unlock the given input, but don't decrypt
+    the payload if it does. Just return True for yes and False for no."""
+    try:
+        header = _Header()
+        header.read(infile, passw)
+    except ValueError:
+        return False
+    return True
+
+def change_password(old_passw: str, new_passw: str, file: BinaryIO) -> None:
+    """Change the password for a file without fully re-encrypting... just change the
+    header and keep the original encryption key.  If `file` is on disk, it must be 
+    opened 'r+b' so that both reading and writing work."""
+    header = _Header()
+    file.seek(0)
+    header.read(file, old_passw)
+    header.iv = os.urandom(4) # reset the IV to change it, but leave .key alone. 
+    file.seek(0)
+    header.write(file, new_passw)
 

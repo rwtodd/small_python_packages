@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-# use from a venv that has the `requests` module installed.
-from rwt.spritz.hash import hash_file
 
-def hash(args):
+from rwt.spritz.hash import hash_file
+from rwt.spritz import crypt
+from pathlib import Path
+
+def hash_command(args):
     import base64
     for file in args.filename:
         result = hash_file(file, args.size // 8)
@@ -10,6 +12,42 @@ def hash(args):
             print(f'{base64.standard_b64encode(result).decode('ASCII')}: {file}')
         else:
             print(f'{result.hex()}: {file}')
+
+def encrypt_command(args):
+    for file in args.filename:
+        print('Encrypting', file)
+        basename = Path(file).name
+        with open(file, 'rb') as infile, open(file+'.data','wb') as outfile:
+            crypt.encrypt(args.password, basename, infile, outfile)
+
+def decrypt_command(args):
+    for file in args.filename:
+        print('Decrypting', file, end='')
+        try:
+            with open(file, 'rb') as infile:
+                orig_fname = crypt.decrypt(args.password, infile)
+                print(' -> ',orig_fname)
+        except:
+            print(' -> error!')
+
+def check_command(args):
+    for file in args.filename:
+        print('Checking', file, end='')
+        with open(file, 'rb') as infile:
+            if crypt.check(args.password, infile):
+                print(' -> ok!')
+            else:
+                print(' -> error!')
+
+def rekey_command(args):
+    for file in args.filename:
+        print('Changing password for', file, end='')
+        try:
+            with open(file, 'r+b') as infile:
+                crypt.change_password(args.password, args.newpass, infile)
+                print(' -> ok!')
+        except Exception as e:
+            print(' -> error!', e)
 
 if __name__ == "__main__":
     import argparse
@@ -19,8 +57,31 @@ if __name__ == "__main__":
     hash_parser.add_argument('-s','--size', type=int, default=256, help="Size of the hash, in bits (default: 256)")
     hash_parser.add_argument('-b','--base64', action="store_true", help="Display the has in base64, rather than hex")
     hash_parser.add_argument('filename', type=str, default=None, nargs='*')
+    encrypt_parser = subparsers.add_parser('encrypt', help="Encrypt files")
+    encrypt_parser.add_argument('--password', type=str, required=True, help="Password for encryption")
+    encrypt_parser.add_argument('filename', type=str, default=None, nargs='*')
+    check_parser = subparsers.add_parser('check', help="Check a password on files")
+    check_parser.add_argument('--password', type=str, required=True, help="Password for decryption")
+    check_parser.add_argument('filename', type=str, default=None, nargs='*')
+    decrypt_parser = subparsers.add_parser('decrypt', help="Decrypt files")
+    decrypt_parser.add_argument('--password', type=str, required=True, help="Password for decryption")
+    decrypt_parser.add_argument('filename', type=str, default=None, nargs='*')
+    rekey_parser = subparsers.add_parser('rekey', help="Change password of encrypted file")
+    rekey_parser.add_argument('--password', type=str, required=True, help="Old password for decryption")
+    rekey_parser.add_argument('--newpass', type=str, required=True, help="New password for encryption")
+    rekey_parser.add_argument('filename', type=str, default=None, nargs='*')
     args = parser.parse_args()
-    if args.command == "hash":
-        hash(args)
-    else:
-        raise SystemExit('Bad command!')
+    match args.command:
+        case "check":
+            check_command(args)
+        case "decrypt":
+            decrypt_command(args)
+        case "encrypt":
+            encrypt_command(args)
+        case "hash":
+            hash_command(args)
+        case "rekey":
+            rekey_command(args)
+        case _:
+            raise SystemExit('Bad command!')
+
