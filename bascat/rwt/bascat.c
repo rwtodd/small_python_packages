@@ -1,5 +1,6 @@
 #include <Python.h>
 #include<stdint.h>
+#include<stdio.h>
 
 static void unprotect(uint8_t *src, size_t len) {
     static const int KEY13[] = {0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A};
@@ -32,7 +33,19 @@ typedef struct {
     PyObject_HEAD
     BasicFile *basic_file;  // Reference to the BasicFile object
     size_t pos;             // Current position in the buffer
+    char *out_buffer;       // output buffer...
+    size_t out_buffsz;      // size of output buffer...
 } BascatIterator;
+
+// ensure that the buffer always has at least 32 empty slots left...
+static int ensure_size(BascatIterator *it, size_t pos) {
+   if (it->out_buffsz < (pos + 32)) {
+      it->out_buffsz += 128; 
+      it->out_buffer = realloc(it->out_buffer, it->out_buffsz);
+      if(it->out_buffer == NULL) return 0; // FALSE
+   }
+   return 1; // TRUE
+}
 
 static int basicfile_init(PyObject* self, PyObject* args, PyObject* kw) {
     BasicFile* const s = (BasicFile*)self;
@@ -41,7 +54,7 @@ static int basicfile_init(PyObject* self, PyObject* args, PyObject* kw) {
 
     // Make a copy of the buffer since we may need to modify it
     s->len = pybuf.len;
-    s->buffer = (uint8_t *)malloc(pybuf.len);
+    s->buffer = malloc(pybuf.len);
     if (!s->buffer) {
         PyBuffer_Release(&pybuf);
         PyErr_NoMemory();
@@ -83,6 +96,7 @@ static PyTypeObject BasicFileType = {
 
 static void bascat_dealloc(BascatIterator *self) {
     Py_DECREF(self->basic_file);  // Decrease the reference count of the BasicFile object
+    free(self->out_buffer);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -106,7 +120,10 @@ static PyTypeObject BascatIteratorType = {
 };
 
 static double mbf32_to_double(const uint8_t *buf) {
-    uint32_t mbf = *(uint32_t *)buf; // Little-endian assumed
+    uint32_t mbf = ((uint32_t)buf[0]) |
+	    (((uint32_t)buf[1]) << 8) |
+	    (((uint32_t)buf[2]) << 16) |
+	    (((uint32_t)buf[3]) << 24);
     if ((mbf & 0xFF000000) == 0) return 0.0;
     int sign = (mbf & 0x00800000) ? -1 : 1;
     int exp = ((mbf >> 24) & 0xFF) - 129;
@@ -116,7 +133,14 @@ static double mbf32_to_double(const uint8_t *buf) {
 }
 
 static double mbf64_to_double(const uint8_t *buf) {
-    uint64_t mbf = *(uint64_t *)buf;
+    uint64_t mbf = ((uint64_t)buf[0]) |
+	    (((uint64_t)buf[1]) << 8) |
+	    (((uint64_t)buf[2]) << 16) |
+	    (((uint64_t)buf[3]) << 24) |
+	    (((uint64_t)buf[4]) << 32) |
+	    (((uint64_t)buf[5]) << 40) |
+	    (((uint64_t)buf[6]) << 48) |
+	    (((uint64_t)buf[7]) << 56);
     if ((mbf & 0xFF00000000000000ULL) == 0) return 0.0;
     int sign = (mbf & 0x0080000000000000ULL) ? -1 : 1;
     int exp = ((mbf >> 56) & 0xFF) - 129;
@@ -172,134 +196,133 @@ static const char *get_token_string(int code) {
 }
 
 static PyObject *basicfile_iter(PyObject *self) {
+    char *obuff = malloc(256);
+    if(!obuff) return NULL;
     BasicFile *bf = (BasicFile *)self;
     BascatIterator *it = (BascatIterator *)PyObject_New(BascatIterator, &BascatIteratorType);
     if (!it) return NULL;
     it->basic_file = bf;
     Py_INCREF(bf);  // Keep the BasicFile alive
     it->pos = 1;  // Start after the first byte (0xFF)
+    it->out_buffer = obuff;
+    it->out_buffsz = 256;
     return (PyObject *)it;
 }
 
-static void append_str(char *str, size_t str_len, size_t *str_pos, const char *to_append) {
-    size_t len = strlen(to_append);
-    if (*str_pos + len < str_len) {
-        memcpy(str + *str_pos, to_append, len);
-        *str_pos += len;
+static void append_str(char *dest, size_t *str_pos, const char *to_append) {
+    size_t count = 0;
+    dest = dest + *str_pos;
+    while( (*dest++ = *to_append++) ) {
+      ++count;
     }
+    *str_pos += count;
 }
 
-static int append_next_token(const unsigned char *buf, size_t len, size_t *pos, char *str, size_t str_len, size_t *str_pos) {
-    if (*pos >= len) return 0;
+#define read_u16_le()  ( (uint16_t)( (uint16_t)(buf[*pos]) | ((uint16_t)(buf[*pos+1]) << 8) ) )
+#define read_i16_le()  ( (int16_t)( (uint16_t)(buf[*pos]) | ((uint16_t)(buf[*pos+1]) << 8) ) )
+#define check_space(n) if ((*pos + (n)) > len) return 0
+
+static int append_next_token(const uint8_t *buf, size_t len, size_t *pos, char *outbuff,  size_t *str_pos) {
+    check_space(0);
     int nxt = buf[(*pos)++] & 0xFF;
     if (nxt >= 0xFD && *pos < len) {
         nxt = (nxt << 8) | (buf[(*pos)++] & 0xFF);
     }
-
     if (nxt == 0) return 0;
 
-    char temp[32];
     const char *token;
     if (nxt == 0x3A) {
         if (*pos < len && buf[*pos] == 0xA1) {
-            append_str(str, str_len, str_pos, "ELSE");
+            append_str(outbuff, str_pos, "ELSE");
             (*pos)++;
         } else if (*pos + 1 < len && buf[*pos] == 0x8F && buf[*pos + 1] == 0xD9) {
-            append_str(str, str_len, str_pos, "'");
+            append_str(outbuff, str_pos, "'");
             *pos += 2;
         } else {
-            append_str(str, str_len, str_pos, ":");
+            append_str(outbuff, str_pos, ":");
         }
     } else if (nxt == 0xB1) {
-        append_str(str, str_len, str_pos, "WHILE");
+        append_str(outbuff, str_pos, "WHILE");
         if (*pos < len && buf[*pos] == 0xE9) (*pos)++;
     } else if (nxt >= 0x20 && nxt <= 0x7E) {
-        if (*str_pos < str_len - 1) str[(*str_pos)++] = (char)nxt;
+        outbuff[(*str_pos)++] = (char)nxt;
     } else if ( (token = get_token_string(nxt)) ) {
-        append_str(str, str_len, str_pos, token);
+        append_str(outbuff, str_pos, token);
     } else {
         switch (nxt) {
             case 0x0B: // Octal short
-                if (*pos + 1 >= len) return 0;
-                sprintf(temp, "&O%o", *(uint16_t *)(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(2);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "&O%o", read_u16_le()); 
                 *pos += 2;
                 break;
             case 0x0C: // Hex short
-                if (*pos + 1 >= len) return 0;
-                sprintf(temp, "&H%X", *(uint16_t *)(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(2);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "&H%X", read_u16_le() ); 
                 *pos += 2;
                 break;
             case 0x0E: // Unsigned short
-                if (*pos + 1 >= len) return 0;
-                sprintf(temp, "%u", *(uint16_t *)(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(2);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "%u", read_u16_le() );
                 *pos += 2;
                 break;
             case 0x0F: // Unsigned byte
-                if (*pos >= len) return 0;
-                sprintf(temp, "%u", buf[*pos] & 0xFF);
-                append_str(str, str_len, str_pos, temp);
+		check_space(1);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "%u", buf[*pos] & 0xFF);
                 (*pos)++;
                 break;
             case 0x1C: // Signed short
-                if (*pos + 1 >= len) return 0;
-                sprintf(temp, "%d", *(int16_t *)(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(2);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "%d", read_i16_le() );
                 *pos += 2;
                 break;
             case 0x1D: // MBF 32-bit float
-                if (*pos + 3 >= len) return 0;
-                sprintf(temp, "%g", mbf32_to_double(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(4);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "%g", mbf32_to_double(buf + *pos));
                 *pos += 4;
                 break;
             case 0x1F: // MBF 64-bit float
-                if (*pos + 7 >= len) return 0;
-                sprintf(temp, "%g", mbf64_to_double(buf + *pos));
-                append_str(str, str_len, str_pos, temp);
+		check_space(8);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "%g", mbf64_to_double(buf + *pos));
                 *pos += 8;
                 break;
             default:
-                sprintf(temp, "<UNK! %x>", nxt);
-                append_str(str, str_len, str_pos, temp);
+                *str_pos += snprintf(outbuff + *str_pos, 32, "<UNK! %x>", nxt);
         }
     }
     return 1;
 }
+#undef read_u16_le
+#undef read_i16_le
+
+#define read_u16_le() ((uint16_t)( (uint16_t)(bf->buffer[it->pos]) | ((uint16_t)(bf->buffer[it->pos+1]) << 8)))
 
 static PyObject *bascat_next(PyObject *self) {
     BascatIterator *it = (BascatIterator *)self;
     BasicFile *bf = it->basic_file;
-    if (it->pos + 1 >= bf->len) return NULL; // End of buffer
+    if ((it->pos + 4) >= bf->len) return NULL; // End of buffer
+
+    // read the link...
+    if( read_u16_le() == 0 ) return NULL;
+    it->pos += 2;
 
     // Read line number (little-endian short)
-    uint16_t line_num = *(uint16_t *)(bf->buffer + it->pos);
+    uint16_t line_num = read_u16_le(); 
     it->pos += 2;
-    if (line_num == 0) return NULL; // End of file
 
     // Build the line string
-    char line[4096] = {0}; // Assume 4KB is enough per line
     size_t str_pos = 0;
-    sprintf(line, "%u  ", line_num);
-    str_pos = strlen(line);
+    str_pos = snprintf(it->out_buffer, 32, "%u  ", line_num);
 
-    while (append_next_token(bf->buffer, bf->len, &it->pos, line, sizeof(line), &str_pos)) {
-        // Continue until end of line
+    while (append_next_token(bf->buffer, bf->len, &it->pos, it->out_buffer, &str_pos)) {
+	if(!ensure_size(it, str_pos)) {
+	  return NULL;
+	}
     }
-    line[str_pos] = '\0';
+    it->out_buffer[str_pos] = '\0';
 
-    return PyUnicode_FromString(line);
+    return PyUnicode_FromString(it->out_buffer);
 }
-
-#if  0
-// Method definitions
-static PyMethodDef BascatMethods[] = {
-    {"process", bascat_process, METH_VARARGS, "Process a GW-BASIC file buffer and return an iterator."},
-    {NULL, NULL, 0, NULL}
-};
-#endif
+#undef read_u16_le
 
 // Module definition
 static struct PyModuleDef bascatmodule = {
