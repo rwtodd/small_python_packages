@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+from rwt.bascat import BasicFile
+
+def decode(fname: str) -> None:
+    with open(fname, 'rb') as infile:
+        data = infile.read()
+    for line in BasicFile(data):
+        print(line)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="BASCAT: decode tokeninzed GWBASIC/BASICA files")
+    parser.add_argument('filename', type=str, default=None, nargs='*')
+    args = parser.parse_args()
+    for fname in args.filename:
+        decode(fname)
+
