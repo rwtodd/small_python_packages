@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools >= 77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwt_bascat"  # Your project name on PyPI
+version = "1.0"  # Your project version
+description = "decodes tokenized GW-BASIC/BASICA files"
+authors =  [ { name = "Richard Todd" } ]  # List of authors
+requires-python = ">=3.13"  # Minimum Python version required
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+] 
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+include-package-data = false
+package-dir = { "" = "." }
+# packages = [ "rwt.bascat" ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rwt"]
+exclude = ["tests*","progs*"]
+
+[[tool.setuptools.ext-modules]]
+name = "rwt.bascat"
+sources = ["rwt/bascat.c"]
+py-limited-api = true
