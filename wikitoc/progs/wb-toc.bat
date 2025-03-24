@@ -1,2 +1,2 @@
 @echo off
-d:\venv\cli\Scripts\python.exe %~dp0\wb-toc %*
+d:\venv\cli\Scripts\python.exe %~dp0wb-toc %*
