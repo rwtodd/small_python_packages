@@ -1,6 +1,6 @@
 from . import _internal
 
-def hash_buffer(buffer, size:int|bytearray=32) -> bytearray:
+def hash_buffer(buffer: bytes, size:int|bytearray=32) -> bytearray:
     """Hash the given buffer into and return `size`-bytes of hash data.
     If `size` is not an int, it is assumed to be a writeable buffer of the
     desired size already, and is used for the hash bytes."""
@@ -15,7 +15,7 @@ def hash_buffer(buffer, size:int|bytearray=32) -> bytearray:
     k.drip(hash)
     return hash
 
-def hash_file(fname, size:int|bytearray=32) -> bytearray:
+def hash_file(fname: str, size:int|bytearray=32) -> bytearray:
     """Hash the given file and return `size`-bytes of hash data.
     If `size` is not an int, it is assumed to be a writeable buffer of the
     desired size already, and is used for the hash bytes."""
