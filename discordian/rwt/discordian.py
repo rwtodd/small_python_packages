@@ -1,6 +1,14 @@
-import datetime
-import calendar
-import random
+import datetime as _datetime
+import calendar as _calendar
+import random as _random
+
+__all__ = ['DiscordianDate']
+
+def _ordinal_suffix(number: int) -> str:
+   """Return the ordinal suffix for a number (e.g., 'st', 'nd', 'rd', 'th')."""
+   if 10 <= number % 100 <= 20:
+       return "th"
+   return {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
 
 class DiscordianDate:
     """Represents a Discordian date, providing properties for date components and a method to format strings."""
@@ -29,7 +37,7 @@ class DiscordianDate:
             return str(self)
         return self.format(fmt_str)
 
-    def __init__(self, date=None):
+    def __init__(self, date: _datetime.date|None=None):
         """
         Initialize a DiscordianDate with a datetime.date object.
         If no date is provided, use the current date.
@@ -37,8 +45,8 @@ class DiscordianDate:
         Args:
             date (datetime.date, optional): The Gregorian date. Defaults to today's date.
         """
-        self._gdate = date if date is not None else datetime.date.today()
-        is_leap = calendar.isleap(self._gdate.year)
+        self._gdate = date if date is not None else _datetime.date.today()
+        is_leap = _calendar.isleap(self._gdate.year)
         self._is_tibs = is_leap and self._gdate.month == 2 and self._gdate.day == 29
         day_of_year = self._gdate.timetuple().tm_yday
         # Adjust day of year: -1 normally, -2 after February in leap years to skip St. Tib's Day
@@ -47,47 +55,47 @@ class DiscordianDate:
         self._season_day = (self._adjusted_yday % 73) + 1 if not self._is_tibs else None
 
     @property
-    def year(self):
+    def year(self) -> int:
         """The Discordian year (Gregorian year + 1166)."""
         return self._gdate.year + 1166
 
     @property
-    def day_of_season(self):
+    def day_of_season(self) -> int:
         """The day of the Discordian season (1-73), or None for St. Tib's Day."""
         return self._season_day
 
     @property
-    def is_tibs(self):
+    def is_tibs(self) -> bool:
         """True if the date is St. Tib's Day."""
         return self._is_tibs
 
     @property
-    def season(self):
+    def season(self) -> str:
         """The full season name, or 'St. Tib's Day' if applicable."""
         return "St. Tib's Day" if self._is_tibs else self._SEASONS[2 * (self._adjusted_yday // 73)]
 
     @property
-    def short_season(self):
+    def short_season(self) -> str:
         """The abbreviated season name, or 'St. Tib's Day' if applicable."""
         return "St. Tib's Day" if self._is_tibs else self._SEASONS[2 * (self._adjusted_yday // 73) + 1]
 
     @property
-    def weekday(self):
+    def weekday(self) -> str:
         """The full weekday name, or 'St. Tib's Day' if applicable."""
         return "St. Tib's Day" if self._is_tibs else self._DAYS[2 * (self._adjusted_yday % 5)]
 
     @property
-    def short_weekday(self):
+    def short_weekday(self) -> str:
         """The abbreviated weekday name, or 'St. Tib's Day' if applicable."""
         return "St. Tib's Day" if self._is_tibs else self._DAYS[2 * (self._adjusted_yday % 5) + 1]
 
     @property
-    def is_holy_day(self):
+    def is_holy_day(self) -> bool:
         """True if the date is a holy day (day 5 or 50 of the season)."""
         return self._season_day in (5, 50)
 
     @property
-    def holy_day_name(self):
+    def holy_day_name(self) -> str:
         """The holy day name if applicable, else an empty string."""
         if self._season_day == 5:
             return self._HOLYDAY_5[self._adjusted_yday // 73]
@@ -96,19 +104,13 @@ class DiscordianDate:
         return ""
 
     @property
-    def days_til_xday(self):
+    def days_til_xday(self) -> int:
         """The number of days until X-Day (July 5, 8661)."""
-        xday = datetime.date(8661, 7, 5)
+        xday = _datetime.date(8661, 7, 5)
         return (xday - self._gdate).days
 
-    @staticmethod
-    def _ordinal_suffix(number):
-        """Return the ordinal suffix for a number (e.g., 'st', 'nd', 'rd', 'th')."""
-        if 10 <= number % 100 <= 20:
-            return "th"
-        return {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
 
-    def format(self, fstr):
+    def format(self, fstr: str) -> str:
         """
         Format the Discordian date according to the given format string.
         Supports ddate-compatible format codes.
@@ -144,7 +146,7 @@ class DiscordianDate:
                             result.append(str(self.day_of_season))
                     case 'e':
                         if self.day_of_season is not None:
-                            result.append(str(self.day_of_season) + self._ordinal_suffix(self.day_of_season))
+                            result.append(str(self.day_of_season) + _ordinal_suffix(self.day_of_season))
                     case 'H':
                         result.append(self.holy_day_name)
                     case 'n':
@@ -156,7 +158,7 @@ class DiscordianDate:
                     case 'Y':
                         result.append(str(self.year))
                     case '.':
-                        result.append(random.choice(self._EXCLAIM))
+                        result.append(_random.choice(self._EXCLAIM))
                     case '}':
                         pass  # no-op
                     case 'N':
@@ -178,18 +180,4 @@ class DiscordianDate:
                 result.append(fstr[idx])
                 idx += 1
         return ''.join(result)
-
-# Example usage
-if __name__ == "__main__":
-    # Current date
-    ddate = DiscordianDate()
-    print(ddate.format("Today is %A, %B %d, %Y. %{ %N%nCelebrate %H!%}"))
-    
-    # St. Tib's Day
-    ddate = DiscordianDate(datetime.date(2024, 2, 29))
-    print(ddate.format("Today is %A, %B %d, %Y. %{ %N%nCelebrate %H!%}"))
-    
-    # Holy day example (January 5, 2023 - Mungday)
-    ddate = DiscordianDate(datetime.date(2023, 1, 5))
-    print(ddate.format("Today is %A, %B %d, %Y. %{ %N%nCelebrate %H!%}"))
 

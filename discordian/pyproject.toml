@@ -1,0 +1,26 @@
+# rwt.wikitoc
+
+[build-system]
+requires = ["setuptools >= 77.0.0"]  # Specify build backend dependencies
+build-backend = "setuptools.build_meta"  # Use setuptools as the build backend
+
+[project]
+name = "rwt_discordian"  # Your project name on PyPI
+version = "1.0"  # Your project version
+description = "Provides the Discordian Date"  # Short project description
+authors =  [ { name = "Richard Todd" } ]  # List of authors
+requires-python = ">=3.12"  # Minimum Python version required
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+] 
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+include-package-data = false
+package-dir = { "" = "." }
+packages = [ "rwt" ]
+
