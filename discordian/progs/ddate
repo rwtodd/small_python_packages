@@ -6,7 +6,7 @@ from datetime import date, timedelta
 TODAY_FMT = 'Today is %{%A, the %e day of %B%} in the YOLD %Y%N%nCelebrate %H'
 OTHER_FMT = '%{%A, %B %d%}, %Y YOLD'
 
-def handle_date_input(date_arg, today):
+def handle_date_input(date_arg, today: date) -> date:
     """date_arg should take one of these forms...
     yyyy-mm-dd  -> full date
     mm-dd       -> from this year
@@ -19,7 +19,6 @@ def handle_date_input(date_arg, today):
         return today + timedelta(days=int(date_arg[1:]))
     try:
         parts = [int(part) for part in date_arg.split('-')]
-        print(f'got {len(parts)} parts: <{parts!r}>')
         match len(parts):
             case 1:
                 parts = [ today.year, today.month, parts[0] ]
@@ -56,12 +55,11 @@ if __name__ == "__main__":
     """,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-f', '--format', type=str, default=None, help="The format string")
-    parser.add_argument('date', type=str, default=None, nargs='?')
+    parser.add_argument('date', type=lambda s: handle_date_input(s,today), default=today, nargs='?')
     args = parser.parse_args()
 
-    caldate = handle_date_input(args.date, today)
-    dd = DiscordianDate(caldate)
+    dd = DiscordianDate(args.date)
     fmt = args.format
     if fmt is None:
-        fmt = TODAY_FMT if caldate == today else OTHER_FMT
+        fmt = TODAY_FMT if args.date == today else OTHER_FMT
     print(dd.format(fmt))
