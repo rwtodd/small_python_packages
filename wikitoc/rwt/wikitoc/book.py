@@ -129,6 +129,8 @@ class Page:
         book = self.book
         contents = self._page_contents().strip()
         postlude = self._page_postscript().strip()
+        if len(postlude) > 0:
+            postlude = postlude + '\n'
         return f"""{{{{{book.nav_template}
 |1 = {book.nav_title}
 |2 = {book.TOC.make_display_link()}
@@ -139,8 +141,7 @@ class Page:
 
 &rarr; {(self.next_page or book.TOC).make_display_link()} &rarr;
 
-{postlude}
-{book.book_category_mark}"""
+{postlude}{book.book_category_mark}"""
 
 class TableOfContents(Page):
     def __init__(self, book: 'Book', url_name: str, parent_cat: str):
