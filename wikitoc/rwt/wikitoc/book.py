@@ -3,8 +3,6 @@ generating the wikitext pages for the book."""
 
 __all__ = ['Book', 'Page', 'generate_nav_page']
 
-from typing import List as _List
-
 _UNK = "UNKNOWN"
 
 class RawText:
@@ -186,7 +184,7 @@ class Book:
         cmark.is_category = True
         self._category_mark = cmark.make_category_marker()
         self._nav_template = None
-        self._pages : _List[Page] = []
+        self._pages : list[Page] = []
         self._unique_urls = set([book_url])
         self._author = None
         self._pub_date = None
@@ -223,7 +221,7 @@ class Book:
         self.TOC._add_entry(RawText(text))
     
     @property
-    def pages(self) -> _List[Page]:
+    def pages(self) -> list[Page]:
         return self._pages # TODO: does making a copy here make sense?
     
     def _set_pub_date(self, date: str):

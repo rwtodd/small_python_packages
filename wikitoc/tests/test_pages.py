@@ -2,7 +2,7 @@
 #   python3 -m unittest discover -s tests
 
 import unittest
-from rwt import wikitoc as wt
+from rwt.wikitoc import book as wt
 
 class Test1(unittest.TestCase):
     def test_books_and_pages(self):
