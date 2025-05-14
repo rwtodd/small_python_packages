@@ -127,7 +127,7 @@ class ThothTarotDeck(TarotDeck):
     def minor_name(self, suit: Suit, card: Court|int) -> str:
         """slightly different than a generic deck"""
         match card:
-            case Suit():
+            case Court():
                 card_name = suit.name.capitalize()
             case int(n) if 1 <= n <= 10:
                 card_name = _Generic_Minors[n - 1]
@@ -150,3 +150,75 @@ class ThothTarotDeck(TarotDeck):
         base = self._generic_minor_imagebase(suit, card)
         return f'ThothTarot_{base}.webp'
 
+class BotaTarotDeck(TarotDeck):
+    """The BOTA deck only really contains trumps (as far as I am concerned...)"""
+    def trump_image_url(self, num: int) -> str:
+        """Get the BOTA painted trump image"""
+        if 0 <= num <= 21:
+            return f'BOTA_Key_{num}_Painted.jpg'
+        raise ValueError('Trump number should be between 0 and 21!')
+
+class HaindlTarotDeck(TarotDeck):
+    """The Haindl Deck"""
+
+    _HAINDL_TRUMPS = ['The Fool', 
+                   'The Magician', 'The High Priestess', 'The Empress', 'The Empereor', 'The Hierophant', 'The Lovers', 'The Chariot',
+                   'Lust', 'The Hermit', 'The Wheel of Fortune', 'Justice', 'The Hanged Man', 'Death', 'Alchemy',
+                   'The Devil', 'The Tower', 'The Star', 'The Moon', 'The Sun', 'Aeon', 'The Universe']
+  
+    def trump_name(self, num:int) -> str:
+        """Get the name of the given trump card."""
+        if 0 <= num <= 21:
+            return HaindlTarotDeck._HAINDL_TRUMPS[num]
+        else:
+            raise ValueError('Trumps are from 0 to 21!')
+
+    def minor_name(self, suit: Suit, card: Court|int) -> str:
+        """slightly different than a generic deck... Father = King (Prince)"""
+        match card:
+            case Court.KNIGHT:
+                card_name = "Son"
+            case Court.QUEEN:
+                card_name = "Mother"
+            case Court.PRINCE:
+                card_name = "Father"
+            case Court.PRINCESS:
+                card_name = "Daughter"
+            case int(n) if 1 <= n <= 10:
+                card_name = _Generic_Minors[n - 1]
+            case _:
+                raise ValueError('tarot minor cards are 1-10 or a Cour.XXX!')
+        match suit:
+            case Suit.PENTACLES:
+                suit_name = 'Stones'
+            case _:
+                suit_name = suit.name.capitalize()
+        return f'{card_name} of {suit_name}'
+
+    def trump_image_url(self, num:int) -> str:
+        """Get the Haindl deck trump image"""
+        if 0 <= num <= 21:
+            return f'HaindlTarotTrump{num:02d}.jpg'
+        raise ValueError('Trump number should be between 0 and 21!')
+
+    def minor_image_url(self, suit: Suit, card: Court|int) -> str:
+        match card:
+            case Court.KNIGHT:
+                cname = 'Kn'
+            case Court.QUEEN:
+                cname = 'Qn'
+            case Court.PRINCE:
+                cname = 'Kg'
+            case Court.PRINCESS:
+                cname = 'Pg'
+            case 1:
+                cname = 'Ace'
+            case int(x) if 2 <= x <= 10:
+                cname = str(x)
+        match suit:
+            case Suit.PENTACLES:
+                sname = 'Stones'
+            case _:
+                sname = suit.name.capitalize()
+        return f"HaindlTarot{cname}{sname}.jpg"
+        
