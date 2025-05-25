@@ -19,17 +19,17 @@ class Suit(_Enum):
     PENTACLES = 4
 
 class Court(_Enum):
-    KNIGHT = 1
+    KING = 1   # The old masculine, in some decks this is the Knight
     QUEEN = 2
-    PRINCE = 3
+    PRINCE = 3 # The young masculine, in some decks this is the King when the Knight is the 'father'
     PRINCESS = 4
 
 _Generic_Trumps = ['The Fool', 
-                   'The Magician', 'The High Priestess', 'The Empress', 'The Empereor', 'The Hierophant', 'The Lovers', 'The Chariot',
+                   'The Magician', 'The High Priestess', 'The Empress', 'The Emperor', 'The Hierophant', 'The Lovers', 'The Chariot',
                    'Strength', 'The Hermit', 'Wheel of Fortune', 'Justice', 'The Hanged Man', 'Death', 'Temperance',
                    'The Devil', 'The Tower', 'The Star', 'The Moon', 'The Sun', 'Judgement', 'The World']
 _Generic_Minors = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
-_Generic_Royals = ['Knight', 'Queen', 'King', 'Page']
+_Generic_Royals = ['Knight', 'Queen', 'King', 'Page']  # RWS-Style decks.
 
 class TarotDeck:
     """Generic tarot card info, generally follows RWS"""
@@ -61,7 +61,7 @@ class TarotDeck:
     def _generic_minor_imagebase(self, suit: Suit, card: Court|int) -> str:
         """Get the base of the card images common to at least RWS and Thoth, and maybe others."""
         match card:
-            case Court.KNIGHT:
+            case Court.KING:
                 cname = 'N'
             case Court.QUEEN:
                 cname = 'Q'
@@ -92,6 +92,13 @@ class TarotDeck:
             tname = tname[4:]
         return f'BXref:{tname} (Tarot Card)'
 
+    def trump_wikipage_name(self, num: int) -> str:
+        """Give the name of the page for the trump"""
+        pn = self.trump_name(num)
+        if pn.startswith('The '):
+            pn = pn[4:] + ', The'
+        return pn
+    
     def minor_bxref_page(self, suit: Suit, card: Court|int) -> str:
         """Get the BXref page for the given minor card"""
         cname = self._generic_minor_name(suit, card)
@@ -110,13 +117,63 @@ class TarotDeck:
 class RWSTarotDeck(TarotDeck):
     pass # this _is_ the Generic tarot!
 
+class JungianTarot(TarotDeck):
+    """Specific responses for the Jungian Tarot."""
+    _JUNGIAN_ROYALS = ['King', 'Queen', 'Prince', 'Princess']
+
+    def _trump_name_fixup(self, tn: str) -> str:
+        """Correct the generic trump names for the Jungian Tarot"""
+        if tn.endswith('Lovers'):
+            tn = tn[:-1]
+        elif tn == 'Judgement':
+            tn = 'Judgment'
+        return tn
+    
+    def trump_name(self, num:int) -> str:
+        return self._trump_name_fixup(self._generic_trump_name(num))
+
+    def minor_name(self, suit: Suit, card: Court|int) -> str:
+        match card:
+            case Court():
+                card_name = JungianTarot._JUNGIAN_ROYALS[card.value - 1]
+            case int(n) if 1 <= n <= 10:
+                card_name = _Generic_Minors[n - 1]
+            case _:
+                raise ValueError('tarot minor cards are 1-10 or a Court.XXX!')
+        return f'{card_name} of {suit.name.capitalize()}'
+
+    def trump_image_url(self, num: int) -> str:
+        """Get the image name for a given trump card (e.g. JungianTarot_Fool.webp)"""
+        base = self._trump_name_fixup(self._generic_trump_imagebase(num))
+        return f'JungianTarot_{base}.webp'
+
+    def minor_image_url(self, suit: Suit, card: Court|int) -> str:
+        """Get the image name for a given trump card (e.g. RWSTarot_4oCups.jpeg)"""
+        match card:
+            case Court.KING:
+                cname = 'K'
+            case Court.QUEEN:
+                cname = 'Q'
+            case Court.PRINCE:
+                cname = 'P'
+            case Court.PRINCESS:
+                cname = 'Ps'
+            case 1:
+                cname = 'A'
+            case int(n) if 2 <= n <= 10:
+                cname = str(n)
+            case _:
+                raise ValueError('tarot minor cards are 1-10 or a Court.XXX!')
+        return f'JungianTarot_{cname}o{suit.name.capitalize()}.webp'
+
 class ThothTarotDeck(TarotDeck):
     """Specific responses for the Thoth tarot. For consistency, Strength is still 8 despite what the physical deck says."""
     _THOTH_TRUMPS = ['The Fool', 
                    'The Magus', 'The Priestess', 'The Empress', 'The Empereor', 'The Hierophant', 'The Lovers', 'The Chariot',
                    'Lust', 'The Hermit', 'Fortune', 'Adjustment', 'The Hanged Man', 'Death', 'Art',
                    'The Devil', 'The Tower', 'The Star', 'The Moon', 'The Sun', 'The Aeon', 'The Universe']
- 
+    _THOTH_ROYALS = [ 'Knight', 'Queen', 'Prince', 'Princess' ]
+
     def trump_name(self, num:int) -> str:
         """Get the name of the given trump card."""
         if 0 <= num <= 21:
@@ -128,7 +185,7 @@ class ThothTarotDeck(TarotDeck):
         """slightly different than a generic deck"""
         match card:
             case Court():
-                card_name = suit.name.capitalize()
+                card_name = ThothTarotDeck._THOTH_ROYALS[card.value - 1]
             case int(n) if 1 <= n <= 10:
                 card_name = _Generic_Minors[n - 1]
             case _:
@@ -176,7 +233,7 @@ class HaindlTarotDeck(TarotDeck):
     def minor_name(self, suit: Suit, card: Court|int) -> str:
         """slightly different than a generic deck... Father = King (Prince)"""
         match card:
-            case Court.KNIGHT:
+            case Court.KING:
                 card_name = "Son"
             case Court.QUEEN:
                 card_name = "Mother"
@@ -203,7 +260,7 @@ class HaindlTarotDeck(TarotDeck):
 
     def minor_image_url(self, suit: Suit, card: Court|int) -> str:
         match card:
-            case Court.KNIGHT:
+            case Court.KING:
                 cname = 'Kn'
             case Court.QUEEN:
                 cname = 'Qn'
@@ -215,6 +272,8 @@ class HaindlTarotDeck(TarotDeck):
                 cname = 'Ace'
             case int(x) if 2 <= x <= 10:
                 cname = str(x)
+            case _:
+                raise ValueError(f'<{card}> is not a valid tarot card')
         match suit:
             case Suit.PENTACLES:
                 sname = 'Stones'
