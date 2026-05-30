@@ -137,11 +137,15 @@ class EpubWriter:
         """Generate the filename for the content.opf file."""
         return "OEBPS/content.opf"
 
-    def __init__(self, fname: str, title: str, author: str, pubyear: int):
-        """Create an EPUB file and prepare to fill it with contents."""
+    def __init__(self, fname: str, title: str, author: str, pubyear: int, language: str = "en"):
+        """Create an EPUB file and prepare to fill it with contents.
+
+        language: BCP 47 language tag (e.g. "en", "ja", "ja-JP"). Defaults to "en".
+        """
         self._title = title
         self._author = author
         self._pubyear = pubyear
+        self._language = language
         self._coverfile: str | None = None
         self._img_dims: dict[str, tuple[int, int]] = {}
         self._contents: list[_ContentItem] = []
@@ -197,7 +201,7 @@ class EpubWriter:
             f"""<?xml version="1.0" encoding="utf-8"?>
 <package version="3.0" unique-identifier="BookId" xmlns="http://www.idpf.org/2007/opf">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:language>en</dc:language>
+    <dc:language>{self._language}</dc:language>
     <dc:creator id="cre">{self._author}</dc:creator>
     <meta refines="#cre" property="role" scheme="marc:relators">aut</meta>
     <dc:date>{self._pubyear}</dc:date>
