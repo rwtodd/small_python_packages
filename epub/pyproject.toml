@@ -1,25 +1,22 @@
-# rwt.wikitoc
-
-[build-system]
-requires = ["setuptools >= 77.0.0"]  # Specify build backend dependencies
-build-backend = "setuptools.build_meta"  # Use setuptools as the build backend
-
 [project]
-name = "rwt_epub"  # Your project name on PyPI
-version = "1.0"  # Your project version
-description = "Creates epub documents"  # Short project description
-authors =  [ { name = "Richard Todd" } ]  # List of authors
-requires-python = ">=3.13"  # Minimum Python version required
-license = "MIT"
+name = "rwt-epub"
+version = "2.0.0"
+description = "A tiny pure-Python EPUB 3 writer"
+authors = [{ name = "Richard Todd" }]
+requires-python = ">=3.13"
+license = { text = "MIT" }
+readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",
-] 
-readme = "README.md"
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
 
 [project.urls]
 Repository = "https://github.com/rwtodd/small_python_packages.git"
 
-[tool.setuptools]
-include-package-data = false
-package-dir = { "" = "." }
-packages = [ "rwt" ]
+[build-system]
+requires = ["uv_build>=0.11.16,<0.12.0"]
+build-backend = "uv_build"
