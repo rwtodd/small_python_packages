@@ -391,7 +391,7 @@ ol {{ list-style-type: none; }}
 <head>
   <title>{_Path(img_fname).stem}</title>
 </head>
-<body>
+<body class="ibooks-dark-theme-use-custom-text-color">
   <div style="height: 100vh; text-align: center; padding: 0pt; margin: 0pt;">
     <svg xmlns="http://www.w3.org/2000/svg" height="100%" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 {w} {h}" width="100%" xmlns:xlink="http://www.w3.org/1999/xlink">
       <image width="{w}" height="{h}" xlink:href="{self.img_path(img_fname, relative=True)}"/>
@@ -457,7 +457,7 @@ ol {{ list-style-type: none; }}
 <head>
   <title>{title}</title>
 {css_block}</head>
-<body>
+<body class="ibooks-dark-theme-use-custom-text-color">
 {body}
 </body>
 </html>"""
