@@ -4,7 +4,38 @@
 There are actually a fair amount of .BAS files out there in the default tokenized
 format, but you'd need a working GWBASIC/BASICA to see the source.
 
-This version is implemented as a basic python c-extension, plus a driver program.
+This version is implemented as a Python C extension, plus a CLI tool.
+
+## Installation
+
+### As a library
+
+```bash
+uv pip install .
+# or
+pip install .
+```
+
+Then:
+
+```python
+from rwt_bascat import BasicFile
+
+with open("SUBWAY.gwbas", "rb") as f:
+    for line in BasicFile(f.read()):
+        print(line)
+```
+
+### The `bascat` CLI tool
+
+```bash
+# Installs the tool (and its isolated copy of the library) into your user environment
+uv tool install .
+
+bascat SUBWAY.gwbas
+```
+
+After installation the `bascat` command is on your `$PATH`.
 
 ## Unprotect Feature
 

@@ -83,7 +83,7 @@ static PyObject *basicfile_iter(PyObject *self); // forward declare
 
 static PyTypeObject BasicFileType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "bascat.BasicFile",   
+    .tp_name = "rwt_bascat.BasicFile",   
     .tp_doc = "A GWBASIC/BASICA tokenized file",
     .tp_basicsize = sizeof(BasicFile),   
     .tp_itemsize = 0,                        
@@ -109,7 +109,7 @@ static PyObject *bascat_iter(PyObject *self) {
 
 static PyTypeObject BascatIteratorType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "bascat._BascatIterator",   
+    .tp_name = "rwt_bascat._BascatIterator",   
     .tp_doc = "An Iterator for GWBASIC/BASICA code lines",
     .tp_basicsize = sizeof(BascatIterator),   
     .tp_itemsize = 0,                        
@@ -325,20 +325,20 @@ static PyObject *bascat_next(PyObject *self) {
 #undef read_u16_le
 
 // Module definition
-static struct PyModuleDef bascatmodule = {
+static struct PyModuleDef coremodule = {
     PyModuleDef_HEAD_INIT,
-    "bascat",
+    "_core",
     "Module to process GW-BASIC files.",
     -1,
     NULL, NULL, NULL, NULL, NULL
 };
 
 // Module initialization
-PyMODINIT_FUNC PyInit_bascat(void) {
+PyMODINIT_FUNC PyInit__core(void) {
     PyObject *m;
     if ((PyType_Ready(&BasicFileType) < 0)  ||
         (PyType_Ready(&BascatIteratorType) < 0)) return NULL;
-    m = PyModule_Create(&bascatmodule);
+    m = PyModule_Create(&coremodule);
     if (m == NULL) return NULL;
     Py_INCREF(&BasicFileType);
     Py_INCREF(&BascatIteratorType);
@@ -351,4 +351,3 @@ error2:
     Py_DECREF(m);
     return NULL;
 }
-
