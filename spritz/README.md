@@ -1,6 +1,6 @@
 # Spritz Cipher
 
-A library and cli implemntation of the [Spritz cipher.](https://people.csail.mit.edu/rivest/pubs/RS14.pdf).
+A library and CLI implementation of the [Spritz cipher.](https://people.csail.mit.edu/rivest/pubs/RS14.pdf).
 
 It's not intended for industrial-strength uses, but rather 
 as a curiosity. It was an interesting exercise to build out
@@ -11,6 +11,33 @@ by a short hash of the password, and a random number of bytes
 of the cipher stream is skipped and not used in the file at all.
 Like some other encryption programs, the file is organized so the
 password can be changed *without* re-encrypting the entire file.
+
+## Installation
+
+### As a library
+
+```bash
+uv pip install .
+# or
+pip install .
+```
+
+Then:
+
+```python
+from rwt_spritz import crypt
+from rwt_spritz.hash import hash_file
+```
+
+### The `spritz` CLI tool
+
+```bash
+uv tool install .
+
+spritz hash README.md
+```
+
+After installation the `spritz` command is on your `$PATH`.
 
 ## Other Versions
 

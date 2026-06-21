@@ -179,4 +179,3 @@ def change_password(old_passw: str, new_passw: str, file: BinaryIO) -> None:
     header.iv = os.urandom(4) # reset the IV to change it, but leave .key alone. 
     file.seek(0)
     header.write(file, new_passw)
-

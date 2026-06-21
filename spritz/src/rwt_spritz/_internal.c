@@ -272,7 +272,7 @@ static PyMethodDef spritzkernel_methods[] = {
 
 static PyTypeObject SpritzKernelType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "rwt.spritz._internal.SpritzKernel", 
+    .tp_name = "rwt_spritz._internal.SpritzKernel", 
     .tp_doc = "A class to maintain a the status of a spritz sponge",
     .tp_basicsize = sizeof(SpritzState),  // Size includes running_sum
     .tp_itemsize = 0,

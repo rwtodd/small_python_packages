@@ -1,0 +1,99 @@
+"""Private CLI entry point for the `spritz` tool."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+from pathlib import Path
+
+from rwt_spritz import crypt
+from rwt_spritz.hash import hash_file
+
+
+def hash_command(args: argparse.Namespace) -> None:
+    for file in args.filename:
+        result = hash_file(file, args.size // 8)
+        if args.base64:
+            print(f"{base64.standard_b64encode(result).decode('ASCII')}: {file}")
+        else:
+            print(f"{result.hex()}: {file}")
+
+
+def encrypt_command(args: argparse.Namespace) -> None:
+    for file in args.filename:
+        print("Encrypting", file)
+        basename = Path(file).name
+        with open(file, "rb") as infile, open(file + ".data", "wb") as outfile:
+            crypt.encrypt(args.password, basename, infile, outfile)
+
+
+def decrypt_command(args: argparse.Namespace) -> None:
+    for file in args.filename:
+        print("Decrypting", file, end="")
+        try:
+            with open(file, "rb") as infile:
+                orig_fname = crypt.decrypt(args.password, infile)
+                print(" -> ", orig_fname)
+        except Exception:
+            print(" -> error!")
+
+
+def check_command(args: argparse.Namespace) -> None:
+    for file in args.filename:
+        print("Checking", file, end="")
+        with open(file, "rb") as infile:
+            if crypt.check(args.password, infile):
+                print(" -> ok!")
+            else:
+                print(" -> error!")
+
+
+def rekey_command(args: argparse.Namespace) -> None:
+    for file in args.filename:
+        print("Changing password for", file, end="")
+        try:
+            with open(file, "r+b") as infile:
+                crypt.change_password(args.password, args.newpass, infile)
+                print(" -> ok!")
+        except Exception as e:
+            print(" -> error!", e)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Spritz cipher utility")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    hash_parser = subparsers.add_parser("hash", help="Hash files")
+    hash_parser.add_argument(
+        "-s", "--size", type=int, default=256, help="Size of the hash, in bits (default: 256)"
+    )
+    hash_parser.add_argument(
+        "-b", "--base64", action="store_true", help="Display the hash in base64, rather than hex"
+    )
+    hash_parser.add_argument("filename", type=str, default=None, nargs="*")
+    encrypt_parser = subparsers.add_parser("encrypt", help="Encrypt files")
+    encrypt_parser.add_argument("--password", type=str, required=True, help="Password for encryption")
+    encrypt_parser.add_argument("filename", type=str, default=None, nargs="*")
+    check_parser = subparsers.add_parser("check", help="Check a password on files")
+    check_parser.add_argument("--password", type=str, required=True, help="Password for decryption")
+    check_parser.add_argument("filename", type=str, default=None, nargs="*")
+    decrypt_parser = subparsers.add_parser("decrypt", help="Decrypt files")
+    decrypt_parser.add_argument("--password", type=str, required=True, help="Password for decryption")
+    decrypt_parser.add_argument("filename", type=str, default=None, nargs="*")
+    rekey_parser = subparsers.add_parser("rekey", help="Change password of encrypted file")
+    rekey_parser.add_argument("--password", type=str, required=True, help="Old password for decryption")
+    rekey_parser.add_argument("--newpass", type=str, required=True, help="New password for encryption")
+    rekey_parser.add_argument("filename", type=str, default=None, nargs="*")
+    args = parser.parse_args()
+    match args.command:
+        case "check":
+            check_command(args)
+        case "decrypt":
+            decrypt_command(args)
+        case "encrypt":
+            encrypt_command(args)
+        case "hash":
+            hash_command(args)
+        case "rekey":
+            rekey_command(args)
+        case _:
+            raise SystemExit("Bad command!")
