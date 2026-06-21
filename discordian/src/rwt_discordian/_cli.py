@@ -1,12 +1,17 @@
-#!/usr/bin/env python3
+"""Private CLI entry point for the `ddate` tool."""
 
-from rwt.discordian import DiscordianDate
+from __future__ import annotations
+
+import argparse
 from datetime import date, timedelta
 
-TODAY_FMT = 'Today is %{%A, the %e day of %B%} in the YOLD %Y%N%nCelebrate %H'
-OTHER_FMT = '%{%A, %B %d%}, %Y YOLD'
+from rwt_discordian import DiscordianDate
 
-def handle_date_input(date_arg, today: date) -> date:
+TODAY_FMT = "Today is %{%A, the %e day of %B%} in the YOLD %Y%N%nCelebrate %H"
+OTHER_FMT = "%{%A, %B %d%}, %Y YOLD"
+
+
+def handle_date_input(date_arg: str | None, today: date) -> date:
     """date_arg should take one of these forms...
     yyyy-mm-dd  -> full date
     mm-dd       -> from this year
@@ -15,25 +20,25 @@ def handle_date_input(date_arg, today: date) -> date:
     t-x         -> x days ago"""
     if date_arg is None:
         return today
-    if date_arg.startswith('t'):
+    if date_arg.startswith("t"):
         return today + timedelta(days=int(date_arg[1:]))
     try:
-        parts = [int(part) for part in date_arg.split('-')]
+        parts = [int(part) for part in date_arg.split("-")]
         match len(parts):
             case 1:
-                parts = [ today.year, today.month, parts[0] ]
+                parts = [today.year, today.month, parts[0]]
             case 2:
-                parts = [ today.year, parts[0], parts[1] ]
+                parts = [today.year, parts[0], parts[1]]
             case 3:
-                pass # do nothing! parts is good
+                pass
             case _:
                 raise ValueError("given date has too many segments!")
     except ValueError as ve:
         raise ValueError("given date isn't a valid format!") from ve
     return date(*parts)
 
-if __name__ == "__main__":
-    import argparse
+
+def main() -> None:
     today = date.today()
     parser = argparse.ArgumentParser(
         description="Calculate discordian dates!",
@@ -43,19 +48,25 @@ if __name__ == "__main__":
    %d  day of season  /  %e  ordinal day of season
    %Y  the Year of Our Lady of Discord
    %X  the number of days left until X-Day
-  
+
    %H  name of the holy day, if it is one
    %N  directive to skip the rest of the format
        if today is not a holy day
-  
+
    %{ ... %}  either announce Tibs Day, or format the
               interior string if it is not Tibs Day
-           
+
    %n  newline        /  %t  tab
     """,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-f', '--format', type=str, default=None, help="The format string")
-    parser.add_argument('date', type=lambda s: handle_date_input(s,today), default=today, nargs='?')
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("-f", "--format", type=str, default=None, help="The format string")
+    parser.add_argument(
+        "date",
+        type=lambda s: handle_date_input(s, today),
+        default=today,
+        nargs="?",
+    )
     args = parser.parse_args()
 
     dd = DiscordianDate(args.date)

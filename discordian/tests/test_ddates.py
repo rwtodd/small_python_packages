@@ -2,7 +2,7 @@
 #   python3 -m unittest discover -s tests
 
 import unittest
-from rwt.discordian import DiscordianDate
+from rwt_discordian import DiscordianDate
 from datetime import date
 
 class Test1(unittest.TestCase):
