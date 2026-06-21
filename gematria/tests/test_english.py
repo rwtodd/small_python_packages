@@ -2,7 +2,7 @@
 # Run from the directory with pypackage.toml as:
 #   python3 -m unittest discover -s tests
 import unittest
-from rwt.gematria import english as eq
+from rwt_gematria import english as eq
 
 class TestALW(unittest.TestCase):
     def test_love(self):

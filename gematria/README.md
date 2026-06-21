@@ -2,6 +2,28 @@
 
 I have a helper class, `Cipher`, which can create any English cipher, and has all the ones I know about built-in.
 
+## Installation
+
+```bash
+uv sync
+uv pip install .
+```
+
+Then:
+
+```python
+from rwt_gematria import english as eq
+
+alw = eq.Cipher("alw")
+print(alw.sum("love"))
+```
+
+Run tests with:
+
+```bash
+uv run python -m unittest discover -s tests
+```
+
 ## Built-in Ciphers
 
 * __alw__ The default english qabalah letter values. Named for A=1, L=2, W=3.
