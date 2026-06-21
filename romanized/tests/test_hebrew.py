@@ -2,7 +2,7 @@
 #   python3 -m unittest discover -s tests
 
 import unittest
-from rwt.romanized import hebrew
+from rwt_romanized import hebrew
 
 class TestHebrew(unittest.TestCase):
     def test_abg(self):

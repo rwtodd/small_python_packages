@@ -2,7 +2,7 @@
 #   python3 -m unittest discover -s tests
 
 import unittest
-from rwt.romanized import greek 
+from rwt_romanized import greek 
 
 class TestGreek(unittest.TestCase):
     def test_abg(self):
