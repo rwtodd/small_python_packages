@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwt-rconsole"
+version = "1.0"
+description = "Memory-backed retro paletted display and streaming audio"
+authors = [{ name = "Richard Todd" }]
+requires-python = ">=3.13"
+license = { text = "MIT" }
+readme = "README.md"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+metal = [
+    "pyobjc-framework-Cocoa",
+    "pyobjc-framework-Metal",
+    "pyobjc-framework-Quartz",
+]
+dev = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = [
+    "rwt_rconsole",
+    "rwt_rconsole.backends",
+    "rwt_rconsole.backends.metal",
+    "rwt_rconsole.backends.apple_audio",
+]
+
+[tool.setuptools.package-data]
+"rwt_rconsole.backends.metal" = ["shaders.metal"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
