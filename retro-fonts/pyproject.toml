@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwt-rfonts"
+version = "1.0"
+description = "Authentic EGA/VGA CP437 fonts and fast packed-pixel text blit for retro displays"
+authors = [{ name = "Richard Todd" }]
+requires-python = ">=3.13"
+license = { text = "MIT" }
+readme = "README.md"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+# Optional peer for examples (install separately / path)
+rconsole = []
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["rwt_rfonts"]
+
+[tool.setuptools.package-data]
+"rwt_rfonts" = ["data/*.bin", "data/PROVENANCE.md"]
+
+[[tool.setuptools.ext-modules]]
+name = "rwt_rfonts._blit"
+sources = ["src/rwt_rfonts/_blit.c"]
+py-limited-api = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
