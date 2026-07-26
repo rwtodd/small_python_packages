@@ -38,5 +38,13 @@ packages = [
 [tool.setuptools.package-data]
 "rwt_rconsole.backends.metal" = ["shaders.metal"]
 
+[[tool.setuptools.ext-modules]]
+name = "rwt_rconsole._pcm"
+sources = ["src/rwt_rconsole/_pcm.c"]
+py-limited-api = true
+# macOS: pure-C AudioQueue ring player links AudioToolbox.
+# On other platforms the same sources build the ring only.
+extra-link-args = ["-framework", "AudioToolbox"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

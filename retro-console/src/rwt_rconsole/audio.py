@@ -269,7 +269,12 @@ def create_audio(
     *,
     backend: AudioBackend | None = None,
 ) -> RetroAudio:
-    """Create an audio stream via the given or process-wide registered backend."""
+    """Create an audio stream via the given or process-wide registered backend.
+
+    For GIL-free realtime playback from a PCM ring, prefer
+    :func:`rwt_rconsole.pcm_ring.create_audio_from_ring` instead (pure-C
+    AudioQueue callback; no Python on the audio thread).
+    """
     factory = backend if backend is not None else get_audio_backend()
     if factory is None:
         raise RuntimeError(

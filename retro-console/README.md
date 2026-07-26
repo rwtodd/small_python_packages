@@ -83,17 +83,72 @@ PyBuffer_Release(&view);
 
 ## Audio
 
+### Recommended: PCM ring + pure-C AudioQueue drain (no GIL)
+
+Host audio is a **pull** model. Producers (emulators, `rwt_rsound` chips, etc.)
+**push** float32 frames into a ring; the device drains it from a **native C**
+callback (no Python on the audio thread).
+
+```python
+from rwt_rconsole import (
+    AudioConfig, AudioChannels, PcmRing, create_audio_from_ring,
+    DEFAULT_LATENCY_MS, DEFAULT_FRAMES_PER_BUFFER, DEFAULT_BUFFER_COUNT,
+)
+import math, struct, time
+
+cfg = AudioConfig(sample_rate=44100, channels=AudioChannels.STEREO, reverb=0)
+
+# Application-side buffer (~25 ms by default). Fully tunable via latency_ms
+# or capacity_frames.
+ring = PcmRing(config=cfg, latency_ms=25)
+
+# Device queue depth is ALSO tunable — Apple does not require 3×512.
+# defaults: frames_per_buffer=256, buffer_count=3
+# approx device latency ≈ buffer_count * frames_per_buffer / sample_rate
+player = create_audio_from_ring(
+    cfg, ring,
+    frames_per_buffer=256,
+    buffer_count=3,
+)
+
+# Producer (emu loop / thread): push mono or interleaved float32
+phase = 0.0
+def produce(n_frames: int) -> None:
+    global phase
+    samples = []
+    for _ in range(n_frames):
+        samples.append(math.sin(phase) * 0.2)
+        phase += 2 * math.pi * 440 / cfg.sample_rate
+    ring.push_mono(struct.pack(f"{n_frames}f", *samples))
+
+with player:
+    player.play()
+    for _ in range(100):
+        produce(512)
+        time.sleep(512 / cfg.sample_rate)
+```
+
+| Knob | Default | Meaning |
+|------|---------|---------|
+| `PcmRing(latency_ms=…)` | **25 ms** | How much app-side PCM you can queue |
+| `PcmRing(capacity_frames=…)` | from latency | Explicit ring size in frames |
+| `frames_per_buffer` | **256** | Size of each AudioQueue buffer (was 512 in the old Python callback path) |
+| `buffer_count` | **3** | AQ buffers in flight (not an OS requirement) |
+
+Total latency ≈ **ring fill** (how full you keep it) + **device** (`buffer_count × frames_per_buffer`).
+
+### Legacy: Python callback path
+
+Still available for demos/tests (runs Python on the AudioQueue thread → GIL):
+
 ```python
 from rwt_rconsole import AudioConfig, create_audio, as_float32, suggested_audio_config
 from rwt_rconsole.backends.apple_audio import register as register_audio
-import math
 
 register_audio()
 cfg = suggested_audio_config()
-phase = 0.0
 
 def callback(dst: memoryview) -> None:
-    global phase
     floats = as_float32(dst)
     ...
 

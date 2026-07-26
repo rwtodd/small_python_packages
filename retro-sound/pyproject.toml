@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwt-rsound"
+version = "1.0"
+description = "Retro sound-chip emulation (PC Speaker, SN76496, and more) for emulators and chiptune"
+authors = [{ name = "Richard Todd" }]
+requires-python = ">=3.13"
+license = { text = "MIT" }
+readme = "README.md"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+# Optional peer for examples (install separately / path)
+rconsole = []
+
+[project.urls]
+Repository = "https://github.com/rwtodd/small_python_packages.git"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["rwt_rsound"]
+
+[[tool.setuptools.ext-modules]]
+name = "rwt_rsound._chips"
+sources = [
+    "src/rwt_rsound/_chips.c",
+    "src/rwt_rsound/_nes_apu.c",
+]
+py-limited-api = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

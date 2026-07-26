@@ -17,6 +17,14 @@ from .audio import (
     register_audio_backend,
     suggested_audio_config,
 )
+from .pcm_ring import (
+    DEFAULT_BUFFER_COUNT,
+    DEFAULT_FRAMES_PER_BUFFER,
+    DEFAULT_LATENCY_MS,
+    HAS_RING_PLAYER,
+    PcmRing,
+    create_audio_from_ring,
+)
 from .buffer import SharedByteBuffer
 from .display import (
     clear_display_backend,
@@ -99,6 +107,12 @@ __all__ = [
     "as_int16",
     "as_int8",
     "create_audio",
+    "create_audio_from_ring",
+    "PcmRing",
+    "DEFAULT_LATENCY_MS",
+    "DEFAULT_FRAMES_PER_BUFFER",
+    "DEFAULT_BUFFER_COUNT",
+    "HAS_RING_PLAYER",
     "suggested_audio_config",
     "get_suggested_audio_config",
     "register_audio_backend",
