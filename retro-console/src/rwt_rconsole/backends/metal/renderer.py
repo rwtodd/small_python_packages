@@ -110,12 +110,26 @@ class MetalRenderer:
         self._last_drawable_w = drawable_w
         self._last_drawable_h = drawable_h
 
-        picture_aspect = max(self._config.aspect_ratio, 1e-6)
+        cfg = self._config
+        picture_aspect = max(cfg.aspect_ratio, 1e-6)
         drawable_aspect = drawable_w / max(drawable_h, 1.0)
 
-        if self._config.content_fit is ContentFit.STRETCH:
+        if cfg.content_fit is ContentFit.STRETCH:
             scale_x, scale_y = 1.0, 1.0
+        elif cfg.content_fit is ContentFit.INTEGER_SCALE:
+            from rwt_rconsole.video_math import presentation_size
+
+            pres = presentation_size(cfg.target_size, cfg.aspect_ratio)
+            max_scale = max(
+                1,
+                min(int(drawable_w / float(pres.width)), int(drawable_h / float(pres.height))),
+            )
+            active_w = float(pres.width * max_scale)
+            active_h = float(pres.height * max_scale)
+            scale_x = active_w / drawable_w
+            scale_y = active_h / drawable_h
         else:
+            # LETTERBOX
             if drawable_aspect > picture_aspect:
                 scale_x = picture_aspect / drawable_aspect
                 scale_y = 1.0
@@ -123,7 +137,6 @@ class MetalRenderer:
                 scale_x = 1.0
                 scale_y = drawable_aspect / picture_aspect
 
-        cfg = self._config
         self._uniforms = struct.pack(
             "<IIIIiffI",
             cfg.source_size.width,

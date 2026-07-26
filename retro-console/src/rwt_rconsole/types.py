@@ -23,8 +23,9 @@ class BitDepth(IntEnum):
 class ContentFit(Enum):
     """How the target image maps into a freely resizable window (nearest-neighbor)."""
 
-    LETTERBOX = auto()
-    STRETCH = auto()
+    LETTERBOX = auto()  # largest uniform scale that fits; unused area is black
+    INTEGER_SCALE = auto()  # largest integer scale (1×, 2×, …); avoids uneven pixel bands
+    STRETCH = auto()  # fill the client area (may be non-uniform)
 
 
 class PostEffect(Enum):

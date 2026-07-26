@@ -119,3 +119,33 @@ def test_screen_to_source_letterbox():
     assert left is None and right is None
     assert active_tl is not None and active_tl.x == 0 and active_tl.y == 0
     assert active_br is not None and active_br.x == 319 and active_br.y == 199
+
+
+def test_screen_to_source_integer_scale():
+    # 320×200 @ 4:3 → presentation 320×240.
+    # 1000×800 window: max integer scale = min(1000/320, 800/240) = min(3, 3) = 3.
+    # Active box = 960×720. Offsets: X = 20, Y = 40.
+    cfg = _valid_cfg(
+        source_size=Size2D(320, 200),
+        target_size=Size2D(320, 200),
+        content_fit=ContentFit.INTEGER_SCALE,
+        aspect_ratio=4.0 / 3.0,
+    )
+    left = video_math.screen_to_source(cfg, (1000.0, 800.0), (10.0, 400.0))
+    active_tl = video_math.screen_to_source(cfg, (1000.0, 800.0), (20.0, 40.0))
+    active_br = video_math.screen_to_source(cfg, (1000.0, 800.0), (979.9, 759.9))
+    assert left is None
+    assert active_tl is not None and active_tl.x == 0 and active_tl.y == 0
+    assert active_br is not None and active_br.x == 319 and active_br.y == 199
+
+
+def test_active_viewport_integer_scale():
+    cfg = _valid_cfg(
+        source_size=Size2D(320, 200),
+        target_size=Size2D(320, 200),
+        content_fit=ContentFit.INTEGER_SCALE,
+        aspect_ratio=4.0 / 3.0,
+    )
+    active_w, active_h, ox, oy = video_math.active_viewport(cfg, (1000.0, 800.0))
+    assert (active_w, active_h) == (960.0, 720.0)
+    assert (ox, oy) == (20.0, 40.0)

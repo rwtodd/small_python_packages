@@ -64,6 +64,49 @@ def initial_window_size(config: DisplayConfig) -> Size2D:
     return Size2D(pres.width * config.initial_scale, pres.height * config.initial_scale)
 
 
+def active_viewport(
+    config: DisplayConfig,
+    view_size: tuple[float, float],
+) -> tuple[float, float, float, float] | None:
+    """Return ``(active_w, active_h, offset_x, offset_y)`` for the retro viewport.
+
+    Coordinates are in the same top-left origin space as *view_size*.
+    Returns ``None`` if the view size is invalid.
+    """
+    view_width, view_height = view_size
+    if view_width <= 0.0 or view_height <= 0.0:
+        return None
+
+    picture_aspect = max(config.aspect_ratio, 1e-6)
+    view_aspect = view_width / view_height
+
+    if config.content_fit is ContentFit.STRETCH:
+        return view_width, view_height, 0.0, 0.0
+
+    if config.content_fit is ContentFit.INTEGER_SCALE:
+        # Largest integer multiple of the aspect-corrected presentation size
+        # that fits in the window (prevents uneven pixel scaling / Moiré bands).
+        pres = presentation_size(config.target_size, config.aspect_ratio)
+        max_scale = max(
+            1,
+            min(int(view_width / float(pres.width)), int(view_height / float(pres.height))),
+        )
+        active_w = float(pres.width * max_scale)
+        active_h = float(pres.height * max_scale)
+        offset_x = (view_width - active_w) / 2.0
+        offset_y = (view_height - active_h) / 2.0
+        return active_w, active_h, offset_x, offset_y
+
+    # LETTERBOX — largest uniform (possibly non-integer) scale that fits.
+    if view_aspect > picture_aspect:
+        active_w = view_height * picture_aspect
+        offset_x = (view_width - active_w) / 2.0
+        return active_w, view_height, offset_x, 0.0
+    active_h = view_width / picture_aspect
+    offset_y = (view_height - active_h) / 2.0
+    return view_width, active_h, 0.0, offset_y
+
+
 def screen_to_source(
     config: DisplayConfig,
     view_size: tuple[float, float],
@@ -72,26 +115,14 @@ def screen_to_source(
     """Map physical view coordinates (top-left origin) to retro source pixels.
 
     Returns ``None`` if the point is outside the active viewport
-    (e.g. letterbox margins).
+    (e.g. letterbox / integer-scale margins).
     """
-    view_width, view_height = view_size
-    point_x, point_y = point
-    if view_width <= 0.0 or view_height <= 0.0:
+    viewport = active_viewport(config, view_size)
+    if viewport is None:
         return None
 
-    picture_aspect = max(config.aspect_ratio, 1e-6)
-    view_aspect = view_width / view_height
-
-    if config.content_fit is ContentFit.STRETCH:
-        active_w, active_h, offset_x, offset_y = view_width, view_height, 0.0, 0.0
-    elif view_aspect > picture_aspect:
-        active_w = view_height * picture_aspect
-        offset_x = (view_width - active_w) / 2.0
-        active_h, offset_y = view_height, 0.0
-    else:
-        active_h = view_width / picture_aspect
-        offset_y = (view_height - active_h) / 2.0
-        active_w, offset_x = view_width, 0.0
+    active_w, active_h, offset_x, offset_y = viewport
+    point_x, point_y = point
 
     if (
         point_x < offset_x

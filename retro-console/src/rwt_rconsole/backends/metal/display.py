@@ -21,6 +21,57 @@ if sys.platform != "darwin":
     raise ImportError("Metal backend is only available on macOS")
 
 
+def _cvtime_to_hz(cvtime) -> float:
+    """Convert a CoreVideo ``CVTime`` period to a rate in Hz."""
+    tv = int(cvtime.timeValue)
+    ts = int(cvtime.timeScale)
+    if tv <= 0 or ts <= 0:
+        return 0.0
+    return float(ts) / float(tv)
+
+
+def _new_display_link():
+    from Quartz import CVDisplayLinkCreateWithActiveCGDisplays
+
+    err, link = CVDisplayLinkCreateWithActiveCGDisplays(None)
+    if err != 0 or link is None:
+        raise RuntimeError(f"CVDisplayLinkCreateWithActiveCGDisplays failed ({err})")
+    return link
+
+
+def main_display_refresh_rate() -> float:
+    """Nominal refresh rate of the main display, in Hz.
+
+    Prefers ``NSScreen.maximumFramesPerSecond`` when available, otherwise
+    queries ``CVDisplayLinkGetNominalOutputVideoRefreshPeriod`` on a temporary
+    display link for the active displays.
+
+    Returns 0.0 if the rate cannot be determined.
+    """
+    try:
+        from AppKit import NSScreen
+
+        screen = NSScreen.mainScreen()
+        if screen is not None:
+            fps = int(screen.maximumFramesPerSecond())
+            if fps > 0:
+                return float(fps)
+    except Exception:
+        pass
+
+    try:
+        from Quartz import CVDisplayLinkGetNominalOutputVideoRefreshPeriod
+
+        link = _new_display_link()
+        try:
+            return _cvtime_to_hz(CVDisplayLinkGetNominalOutputVideoRefreshPeriod(link))
+        finally:
+            # Link is a CF type; drop reference (ARC / PyObjC will release).
+            del link
+    except Exception:
+        return 0.0
+
+
 class _AppKitBootstrap:
     _menu_installed = False
 
@@ -285,6 +336,8 @@ class MetalRetroDisplay:
         self._disposed = False
         self._window_closed = False
         self._exiting = False
+        self._display_link = None
+        self._display_link_handler = None  # keep block alive
 
         vram_len = buffer_length(config.source_size, config.bit_depth)
         self._vram_storage = MetalVideoBuffer(device, vram_len)
@@ -376,6 +429,19 @@ class MetalRetroDisplay:
         if self._disposed:
             raise RuntimeError("MetalRetroDisplay is closed")
 
+    def _stop_display_link(self) -> None:
+        if self._display_link is None:
+            return
+        try:
+            from Quartz import CVDisplayLinkIsRunning, CVDisplayLinkStop
+
+            if CVDisplayLinkIsRunning(self._display_link):
+                CVDisplayLinkStop(self._display_link)
+        except Exception:
+            pass
+        self._display_link = None
+        self._display_link_handler = None
+
     @property
     def config(self) -> DisplayConfig:
         return self._config
@@ -392,6 +458,26 @@ class MetalRetroDisplay:
     def input(self):
         return self._input
 
+    @property
+    def refresh_rate(self) -> float:
+        """Nominal refresh rate of the active display, in Hz.
+
+        Uses ``CVDisplayLinkGetNominalOutputVideoRefreshPeriod`` when a link is
+        available, otherwise ``main_display_refresh_rate()``. Returns 0.0 if
+        unknown. This is the display's natural rate (e.g. 60.0 or 120.0), not
+        the ``run(fps=...)`` target.
+        """
+        if self._display_link is not None:
+            try:
+                from Quartz import CVDisplayLinkGetNominalOutputVideoRefreshPeriod
+
+                return _cvtime_to_hz(
+                    CVDisplayLinkGetNominalOutputVideoRefreshPeriod(self._display_link)
+                )
+            except Exception:
+                pass
+        return main_display_refresh_rate()
+
     def present(self) -> None:
         self._throw_if_disposed()
         if not self._window_closed:
@@ -404,37 +490,64 @@ class MetalRetroDisplay:
         *,
         cancel: Callable[[], bool] | None = None,
     ) -> None:
+        """Block until the window closes, driving frames from a CVDisplayLink.
+
+        The display link fires once per display refresh. Frames are throttled
+        so the callback runs at most ``fps`` times per second (same approach as
+        the F# Metal backend). Present remains display-synchronized via Metal.
+        """
         self._throw_if_disposed()
         if fps <= 0.0:
             raise ValueError("fps must be positive.")
 
-        from AppKit import NSApplication, NSTimer
+        from AppKit import NSApplication
+        from Quartz import (
+            CVDisplayLinkSetOutputHandler,
+            CVDisplayLinkStart,
+            CVDisplayLinkStop,
+        )
 
         target_interval = 1.0 / fps
         last_time = [0.0]
         display = self
 
-        def tick(_timer):
+        link = _new_display_link()
+        self._display_link = link
+
+        def handler(_block_self, _display_link, _in_now, _in_output_time, _flags_in):
+            # Called on the CoreVideo display-link thread (not the main thread).
             if self._window_closed or (cancel is not None and cancel()):
                 self._request_exit()
-                return
+                return (0, 0)
             now = time.perf_counter()
             if now - last_time[0] >= target_interval - 0.001:
                 last_time[0] = now
                 self._input.update_frame_state()
                 if should_present(on_frame(display)):
                     display.present()
+            return (0, 0)  # (CVReturn, flagsOut)
 
-        # Schedule on main run loop
-        self._timer = NSTimer.scheduledTimerWithTimeInterval_repeats_block_(
-            min(target_interval, 1.0 / 120.0),
-            True,
-            tick,
-        )
-        NSApplication.sharedApplication().run()
-        if hasattr(self, "_timer") and self._timer is not None:
-            self._timer.invalidate()
-            self._timer = None
+        # Keep the block alive for the lifetime of the link.
+        self._display_link_handler = handler
+        err = CVDisplayLinkSetOutputHandler(link, handler)
+        if err != 0:
+            self._stop_display_link()
+            raise RuntimeError(f"CVDisplayLinkSetOutputHandler failed ({err})")
+
+        err = CVDisplayLinkStart(link)
+        if err != 0:
+            self._stop_display_link()
+            raise RuntimeError(f"CVDisplayLinkStart failed ({err})")
+
+        try:
+            NSApplication.sharedApplication().run()
+        finally:
+            try:
+                CVDisplayLinkStop(link)
+            except Exception:
+                pass
+            self._display_link = None
+            self._display_link_handler = None
 
     def poll_events(self) -> bool:
         self._throw_if_disposed()
@@ -460,9 +573,7 @@ class MetalRetroDisplay:
             return
         self._disposed = True
         self._window_closed = True
-        if hasattr(self, "_timer") and self._timer is not None:
-            self._timer.invalidate()
-            self._timer = None
+        self._stop_display_link()
         try:
             from Foundation import NSNotificationCenter
 

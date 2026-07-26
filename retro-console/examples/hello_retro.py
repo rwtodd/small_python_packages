@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         source_size=Size2D(320, 200),
         target_size=Size2D(320, 200),
         bit_depth=BitDepth.BPP8,
-        content_fit=ContentFit.LETTERBOX,
+        content_fit=ContentFit.INTEGER_SCALE,
         aspect_ratio=CRT_4X3,
         title="HelloRetro",
         initial_scale=3,
@@ -65,7 +65,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Opening Metal window — Quit (⌘Q) or close button to exit.")
         print(
             f"Source {config.source_size.width}x{config.source_size.height} @ 8 bpp; "
-            f"presentation {pres.width}x{pres.height}; CRT={args.crt}; FPS={args.fps}"
+            f"presentation {pres.width}x{pres.height}; CRT={args.crt}; "
+            f"FPS={args.fps}; display≈{display.refresh_rate:.1f} Hz"
         )
 
         def on_frame(d):

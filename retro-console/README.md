@@ -39,6 +39,7 @@ config = DisplayConfig(
 
 with create_display(config) as display:
     display.palette.update(vga)
+    print(f"Display refresh ≈ {display.refresh_rate:.1f} Hz")
     frame = 0
 
     def on_frame(d):
@@ -48,7 +49,16 @@ with create_display(config) as display:
         frame += 1
         return True                 # present this frame (False to skip GPU work)
 
+    # run() is paced by CVDisplayLink (one wake per display refresh),
+    # then throttled so on_frame runs at most `fps` times per second.
     display.run(30.0, on_frame)
+```
+
+Query the main display without opening a window:
+
+```python
+from rwt_rconsole.backends.metal import main_display_refresh_rate
+print(main_display_refresh_rate())  # e.g. 60.0 or 120.0
 ```
 
 ## Buffer interop

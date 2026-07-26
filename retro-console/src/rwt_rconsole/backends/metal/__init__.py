@@ -12,4 +12,11 @@ def register() -> None:
     register_display_backend(MetalDisplayBackend())
 
 
-__all__ = ["register"]
+def main_display_refresh_rate() -> float:
+    """Nominal refresh rate of the main display in Hz (0.0 if unknown)."""
+    from .display import main_display_refresh_rate as _impl
+
+    return _impl()
+
+
+__all__ = ["register", "main_display_refresh_rate"]
